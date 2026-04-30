@@ -1,0 +1,23 @@
+# Dependências
+/node_modules
+/vendor
+
+# Configurações sensíveis
+.env
+.env.backup
+.phpunit.result.cache
+
+# Pastas de Build e Cache
+/public/storage
+/storage/*.key
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/bootstrap/cache/*
+dist
+build
+
+# IDEs
+.vscode/
+.idea/

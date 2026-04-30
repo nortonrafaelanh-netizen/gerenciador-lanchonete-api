@@ -1,0 +1,139 @@
+/* Container principal da seção */
+.ofertas-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: "Arial", sans-serif; /* Substitua pela fonte do seu projeto */
+}
+
+/* Cabeçalho (Título e Ver todos) */
+.ofertas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.ofertas-header h2 {
+  font-size: 1.5rem;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ver-todos {
+  color: #f05a22; /* Laranja da sua marca */
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* Grid de Cards */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* O Card Individual */
+.card-produto {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f0f0f0;
+}
+
+/* Container da Imagem (Necessário para a badge absoluta) */
+.card-image-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background-color: #f9f9f9; /* Cor de fundo caso a imagem demore a carregar */
+}
+
+.produto-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Badge "OFERTA!" */
+.badge-oferta {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: #ff3b30;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+/* Conteúdo do Card */
+.card-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.produto-titulo {
+  font-size: 1.1rem;
+  margin: 0 0 8px 0;
+  color: #222;
+}
+
+.produto-descricao {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 20px 0;
+  line-height: 1.4;
+  flex-grow: 1; /* Empurra o footer para baixo caso o texto seja curto */
+}
+
+/* Rodapé do Card (Preços e Botão) */
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preco-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preco-antigo {
+  font-size: 0.85rem;
+  color: #999;
+  text-decoration: line-through;
+}
+
+.preco-atual {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #f05a22; /* Laranja da marca */
+}
+
+/* Botão de Adicionar */
+.btn-adicionar {
+  background-color: #f05a22;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-adicionar:hover {
+  background-color: #d94d1a;
+}
