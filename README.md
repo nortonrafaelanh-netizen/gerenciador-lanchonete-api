@@ -27,7 +27,7 @@ O **Tenacious Burgers** permite que franqueados gerenciem cardápios, promoçõe
 
 ### Backend
 
-- Laravel 11
+- Laravel
 - Sanctum para autenticação
 - Eloquent ORM
 - Migrations e seeders
