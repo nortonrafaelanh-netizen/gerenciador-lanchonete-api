@@ -28,7 +28,7 @@ export function Burgers() {
 
     setBurgers(data);
     setPromocoes(
-      data.filter((p) => p.originalPrice && p.originalPrice > p.price),
+      data.filter((p) => !!p.originalPrice && p.originalPrice > p.price),
     );
   }, [products, unidade]);
 

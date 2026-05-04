@@ -24,6 +24,7 @@ type OrderStatus = "preparing" | "ontheway" | "delivered";
 
 interface Order {
   id: string;
+  orderNumber: string;
   items: any[];
   total: number;
   status: OrderStatus;
@@ -78,13 +79,23 @@ export default function Cart() {
     {},
   );
   const [creatingOrder, setCreatingOrder] = useState(false);
+  const [savingStatusFor, setSavingStatusFor] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const mapBackendStatus = (status: string): OrderStatus => {
     const normalized = String(status).toUpperCase();
     if (normalized === "ENTREGUE") return "delivered";
     if (normalized === "PRONTO") return "ontheway";
+    if (normalized === "PREPARANDO" || normalized === "PENDENTE")
+      return "preparing";
+    if (normalized === "CANCELADO") return "delivered";
     return "preparing";
+  };
+
+  const backendStatusFor = (status: OrderStatus): string => {
+    if (status === "preparing") return "PREPARANDO";
+    if (status === "ontheway") return "PRONTO";
+    return "ENTREGUE";
   };
 
   const normalizeOrder = (order: any): Order => {
@@ -118,7 +129,10 @@ export default function Cart() {
 
     return {
       id: String(
-        order.numero_pedido ?? order.id ?? order._id ?? `PED-${Date.now()}`,
+        order.id ?? order._id ?? order.numero_pedido ?? `PED-${Date.now()}`,
+      ),
+      orderNumber: String(
+        order.numero_pedido ?? order.order_number ?? `PED-${Date.now()}`,
       ),
       items,
       total: Number(order.total ?? 0),
@@ -149,13 +163,25 @@ export default function Cart() {
 
     const franchiseId = Number(franchiseIds[0] || 1);
 
+    const productsPayload = cart.map((item) => {
+      const productId = Number(item.id);
+      return {
+        product_id: productId,
+        quantidade: item.quantity || 1,
+      };
+    });
+
+    if (productsPayload.some((item) => Number.isNaN(item.product_id))) {
+      setCheckoutError(
+        "Seu carrinho contém produtos inválidos. Atualize o cardápio para carregar os produtos do backend.",
+      );
+      return;
+    }
+
     const orderPayload = {
       franchise_id: franchiseId,
       numero_pedido: `PED-${Date.now()}`,
-      products: cart.map((item) => ({
-        product_id: item.id,
-        quantidade: item.quantity || 1,
-      })),
+      products: productsPayload,
     };
 
     setCreatingOrder(true);
@@ -178,17 +204,27 @@ export default function Cart() {
   };
 
   // Franqueado avança status
-  const advanceStatus = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id !== orderId) return o;
-        const idx = STATUS_ORDER.indexOf(o.status);
-        if (idx < STATUS_ORDER.length - 1) {
-          return { ...o, status: STATUS_ORDER[idx + 1] };
-        }
-        return o;
-      }),
-    );
+  const advanceStatus = async (orderId: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    const currentIdx = STATUS_ORDER.indexOf(order.status);
+    if (currentIdx < 0 || currentIdx >= STATUS_ORDER.length - 1) return;
+
+    const nextStatus = STATUS_ORDER[currentIdx + 1];
+    const backendStatus = backendStatusFor(nextStatus);
+
+    setSavingStatusFor(orderId);
+    try {
+      await orderService.updateStatus(orderId, backendStatus);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o)),
+      );
+    } catch (error) {
+      console.error("Erro ao atualizar status do pedido:", error);
+    } finally {
+      setSavingStatusFor(null);
+    }
   };
 
   // Franqueado salva link de rastreio
@@ -385,7 +421,7 @@ export default function Cart() {
                       </div>
                       <div>
                         <p className="font-black text-gray-800 text-sm">
-                          {order.id}
+                          {order.orderNumber}
                         </p>
                         <p className={`text-sm font-bold ${currentStep.color}`}>
                           {currentStep.label}

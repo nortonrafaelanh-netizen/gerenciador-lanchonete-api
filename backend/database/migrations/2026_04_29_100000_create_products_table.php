@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('nome');
             $table->text('descricao')->nullable();
             $table->decimal('preco', 10, 2);
-            $table->enum('categoria', ['BURGER', 'BEBIDA', 'ACOMPANHAMENTO', 'SOBREMESA'])->default('BURGER');
+            $table->enum('categoria', ['BURGER', 'DOG', 'BEBIDA', 'ACOMPANHAMENTO', 'SOBREMESA', 'COMBO'])->default('BURGER');
             $table->boolean('ativo')->default(true);
             $table->timestamps();
 

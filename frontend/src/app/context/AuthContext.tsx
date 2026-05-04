@@ -22,7 +22,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  loginAsTestFranchisee: () => void;
+  loginAsTestFranchisee: () => Promise<void>;
   register: (
     name: string,
     email: string,
@@ -42,7 +42,7 @@ const TEST_USERS: Record<
   { password: string; user: User; token: string }
 > = {
   "admin@tenacious.com": {
-    password: "123",
+    password: "123456",
     token: "fake-jwt-franqueado",
     user: {
       id: 1,
@@ -51,12 +51,12 @@ const TEST_USERS: Record<
       role: "FRANQUEADO",
     },
   },
-  "cliente@teste.com": {
-    password: "123",
+  "cliente@tenacious.com": {
+    password: "123456",
     token: "fake-jwt-cliente",
     user: {
       id: 2,
-      email: "cliente@teste.com",
+      email: "cliente@tenacious.com",
       name: "Cliente de Teste",
       role: "CLIENTE",
     },
@@ -89,26 +89,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem("@Tenacious:user");
   }, [user]);
 
-  const loginAsTestFranchisee = () => {
-    const { user: u, token: t } = TEST_USERS["admin@tenacious.com"];
-    setToken(t);
-    setUser(u);
+  const loginAsTestFranchisee = async () => {
+    await login("admin@tenacious.com", "123456");
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
 
-    // 1. Verifica credenciais de teste locais primeiro
-    const testEntry = TEST_USERS[email.toLowerCase()];
-    if (testEntry && testEntry.password === password) {
-      setToken(testEntry.token);
-      setUser(testEntry.user);
-      setIsLoading(false);
-      return true;
-    }
-
-    // 2. Se não for credencial de teste, tenta a API do Laravel
     try {
       const response = await api.post("/auth/login", { email, password });
       const { token: newToken, user: userData } = response.data;

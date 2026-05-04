@@ -1,403 +1,145 @@
 # 🍔 Tenacious Burgers - Sistema de Gerenciamento de Lanchonetes
 
-> **Software online de gerenciamento de lanchonetes com funcionalidades de produtos e pedidos**
+> Plataforma para gestão de produtos, pedidos e franquias com controle de acesso de franqueado, cliente e admin.
+
+---
 
 ## 📋 Visão Geral
 
-O **Tenacious Burgers** é uma plataforma completa e escalável para gerenciamento de uma rede de lanchonetes (franquias). O sistema permite que franqueados gerenciem suas unidades, produtos e pedidos de forma centralizada, com controle de acesso por papéis de usuário (Admin, Franqueado, Cliente).
+O **Tenacious Burgers** permite que franqueados gerenciem cardápios, promoções e pedidos, enquanto clientes fazem pedidos online e acompanham o status em tempo real.
 
 ---
 
-## 🏗️ Arquitetura da Aplicação
+## ✅ Integração entre Frontend e Backend
 
-### Entidades Principais
+### Status atual
 
-#### 1. **Lanchonete**
-
-- Representa cada unidade da franquia
-- **Informações:**
-  - Nome da lanchonete
-  - Endereço (logradouro, número, bairro, cidade, estado)
-  - CNPJ (registro único)
-  - Status (ativa/inativa)
-  - Data de criação e atualização
-
-#### 2. **Produto**
-
-- Itens vendidos pelas lanchonetes (hambúrguer, bebida, sobremesa, acompanhamento)
-- **Informações:**
-  - Nome do produto
-  - Descrição detalhada
-  - Preço
-  - Categoria (Burgers, Bebidas, Acompanhamentos, Sobremesas)
-  - Vínculo com lanchonete
-  - Status (disponível/indisponível)
-
-#### 3. **Pedido**
-
-- Representa as compras realizadas pelos clientes
-- **Informações:**
-  - Número do pedido (único)
-  - Data do pedido
-  - Status (pendente, preparando, pronto, entregue, cancelado)
-  - Cliente
-  - Lanchonete
-  - **Produtos incluídos** (múltiplos itens por pedido)
-  - Valor total
-
-### Relacionamentos
-
-```
-┌─────────────────┐         ┌──────────────┐         ┌─────────────┐
-│   Lanchonete    │◄───────►│   Produto    │         │  Pedido     │
-│                 │ 1:N     │              │         │             │
-│  - id           │         │  - id        │         │  - id       │
-│  - nome         │         │  - nome      │────────►│  - data     │
-│  - endereco     │         │  - preco     │ N:M     │  - status   │
-│  - cnpj         │         │  - lanchonete_id      │  - total    │
-│  - ativo        │         │  - ativo     │         │  - cliente  │
-└─────────────────┘         └──────────────┘         └─────────────┘
-       ▲                                                     │
-       │                                                     │
-       └─────────────────────────────────────────────────────┘
-                  (um pedido pertence a uma lanchonete)
-```
+- O frontend consome a API via `axios` com base URL `http://localhost:8000/api`.
+- O token do usuário é enviado automaticamente em todas as requisições autenticadas via interceptor.
+- CRUD completo de produtos e pedidos funciona com o backend Laravel.
+- `COMBO` aceito como categoria válida no backend e no frontend.
+- O frontend usa o `id` numérico do pedido para atualizar status via `PUT /api/pedidos/{id}`.
+- Home Config (ofertas, combos em destaque e banner) é salva e carregada do backend.
 
 ---
 
-## 🔧 Tecnologias
+## 🏗️ Arquitetura
 
 ### Backend
 
-- **Framework:** Laravel 11 (PHP)
-- **Autenticação:** Laravel Sanctum (JWT Tokens)
-- **Banco de Dados:** MySQL/PostgreSQL
-- **ORM:** Eloquent
-- **Validação:** Form Requests do Laravel
-- **API:** REST API com respostas JSON estruturadas
+- Laravel 11
+- Sanctum para autenticação
+- Eloquent ORM
+- Migrations e seeders
+- API REST JSON
 
 ### Frontend
 
-- **Framework:** React 18 + Vite
-- **Linguagem:** TypeScript
-- **Gerenciamento de Estado:** Context API + Hooks
-- **Estilização:** Tailwind CSS
-- **HTTP Client:** Axios com interceptadores
-- **Componentes UI:** Shadcn/ui
-
-### DevOps
-
-- **Servidor Web:** Apache/Nginx
-- **Versão PHP:** 8.2+
-- **Gerenciador de Dependências:** Composer (Backend), npm (Frontend)
-- **Testing:** Pest (Backend), Vitest (Frontend)
+- React 18 + Vite
+- TypeScript
+- Tailwind CSS
+- Axios
+- Context API
 
 ---
 
-## 📡 Funcionalidades por Entidade
+## 🧾 Endpoints Principais
 
-### 🍟 **Lanchonete (Franchise)**
+### Autenticação
 
-| Método     | Endpoint              | Funcionalidade     | Autenticação | Localização                                                |
-| ---------- | --------------------- | ------------------ | ------------ | ---------------------------------------------------------- |
-| **POST**   | `/api/franquias`      | Criar franquia     | ✅ Token     | `backend/app/Http/Controllers/Api/FranchiseController.php` |
-| **GET**    | `/api/franquias`      | Listar franquias   | ✅ Token     | `backend/app/Http/Controllers/Api/FranchiseController.php` |
-| **GET**    | `/api/franquias/{id}` | Detalhar franquia  | ✅ Token     | `backend/app/Http/Controllers/Api/FranchiseController.php` |
-| **PUT**    | `/api/franquias/{id}` | Atualizar franquia | ✅ Token     | `backend/app/Http/Controllers/Api/FranchiseController.php` |
-| **DELETE** | `/api/franquias/{id}` | Remover franquia   | ✅ Token     | `backend/app/Http/Controllers/Api/FranchiseController.php` |
+| Método | Rota                 | Auth | Descrição     |
+| ------ | -------------------- | ---- | ------------- |
+| POST   | `/api/auth/login`    | ❌   | Login         |
+| POST   | `/api/auth/register` | ❌   | Registro      |
+| POST   | `/api/auth/logout`   | ✅   | Logout        |
+| GET    | `/api/auth/me`       | ✅   | Usuário atual |
 
-**Routes:** `backend/routes/api.php`
+### Produtos
 
-**Modelo:** `backend/app/Models/Franchise.php`
+| Método | Rota                           | Auth | Descrição            |
+| ------ | ------------------------------ | ---- | -------------------- |
+| GET    | `/api/produtos`                | ❌   | Listar todos         |
+| POST   | `/api/produtos`                | ✅   | Criar produto        |
+| GET    | `/api/produtos/{id}`           | ❌   | Detalhe              |
+| PUT    | `/api/produtos/{id}`           | ✅   | Atualizar            |
+| DELETE | `/api/produtos/{id}`           | ✅   | Excluir              |
+| GET    | `/api/franquias/{id}/produtos` | ❌   | Produtos da franquia |
 
-**Migração:** `backend/database/migrations/2026_04_27_144659_create_franchises_table.php`
+### Home Config
+
+| Método | Rota                                     | Auth | Descrição           |
+| ------ | ---------------------------------------- | ---- | ------------------- |
+| GET    | `/api/franchise/{franchise}/home-config` | ❌   | Ler configuração    |
+| POST   | `/api/franchise/{franchise}/home-config` | ✅   | Salvar configuração |
+
+**Payload de atualização da home:**
+
+```json
+{
+  "daily_offers_ids": ["1", "2", "3"],
+  "featured_ids": ["5", "8"],
+  "banner_url": "https://exemplo.com/banner.jpg",
+  "offers_data": {
+    "1": {
+      "price": 19.9,
+      "originalPrice": 24.9,
+      "activeFrom": "2026-05-01",
+      "activeTo": "2026-05-07"
+    }
+  }
+}
+```
+
+> O backend também aceita as chaves em camelCase (`dailyOffersIds`, `offersData`).
+
+### Pedidos
+
+| Método | Rota                          | Auth | Descrição           |
+| ------ | ----------------------------- | ---- | ------------------- |
+| POST   | `/api/pedidos`                | ✅   | Criar pedido        |
+| GET    | `/api/pedidos`                | ✅   | Listar pedidos      |
+| GET    | `/api/pedidos/{id}`           | ✅   | Detalhe             |
+| PUT    | `/api/pedidos/{id}`           | ✅   | Atualizar status    |
+| DELETE | `/api/pedidos/{id}`           | ✅   | Cancelar            |
+| GET    | `/api/franquias/{id}/pedidos` | ✅   | Pedidos da franquia |
+| GET    | `/api/meus-pedidos`           | ✅   | Pedidos do cliente  |
 
 ---
 
-### 📦 **Produto**
+## 🎯 Painel do Franqueado (`/admin`)
 
-| Método     | Endpoint                                | Funcionalidade           | Autenticação | Localização                                              |
-| ---------- | --------------------------------------- | ------------------------ | ------------ | -------------------------------------------------------- |
-| **POST**   | `/api/produtos`                         | Criar produto            | ✅ Token     | `backend/app/Http/Controllers/Api/ProductController.php` |
-| **GET**    | `/api/produtos`                         | Listar todos os produtos | ✅ Token     | `backend/app/Http/Controllers/Api/ProductController.php` |
-| **GET**    | `/api/produtos/{id}`                    | Detalhar produto         | ✅ Token     | `backend/app/Http/Controllers/Api/ProductController.php` |
-| **PUT**    | `/api/produtos/{id}`                    | Atualizar produto        | ✅ Token     | `backend/app/Http/Controllers/Api/ProductController.php` |
-| **DELETE** | `/api/produtos/{id}`                    | Remover produto          | ✅ Token     | `backend/app/Http/Controllers/Api/ProductController.php` |
-| **GET**    | `/api/franquias/{franchiseId}/produtos` | Produtos de uma franquia | ✅ Token     | `backend/app/Http/Controllers/Api/ProductController.php` |
+### Aba Cardápio
 
-**Status:** ✅ **Implementado**
+- Criar, editar e excluir produtos e combos
+- Filtrar por categoria e cidade/franquia
+- Suporte a categorias: Burger, Hot Dog, Acompanhamento, Combo
 
-**Campos:** nome, descricao, preco, categoria (BURGER, BEBIDA, ACOMPANHAMENTO, SOBREMESA), ativo
+### Aba Home
 
-**Model:** `backend/app/Models/Product.php`
+Gerencia a vitrine da página inicial em três seções:
 
-**Controller:** `backend/app/Http/Controllers/Api/ProductController.php`
-
-**Migração:** `backend/database/migrations/2026_04_29_100000_create_products_table.php`
-
-**Routes:** `backend/routes/api.php`
-
----
-
-### 🛒 **Pedido**
-
-| Método     | Endpoint                               | Funcionalidade                     | Autenticação | Localização                                            |
-| ---------- | -------------------------------------- | ---------------------------------- | ------------ | ------------------------------------------------------ |
-| **POST**   | `/api/pedidos`                         | Criar pedido                       | ✅ Token     | `backend/app/Http/Controllers/Api/OrderController.php` |
-| **GET**    | `/api/pedidos`                         | Listar todos os pedidos            | ✅ Token     | `backend/app/Http/Controllers/Api/OrderController.php` |
-| **GET**    | `/api/pedidos/{id}`                    | Detalhar pedido                    | ✅ Token     | `backend/app/Http/Controllers/Api/OrderController.php` |
-| **PUT**    | `/api/pedidos/{id}`                    | Atualizar status do pedido         | ✅ Token     | `backend/app/Http/Controllers/Api/OrderController.php` |
-| **DELETE** | `/api/pedidos/{id}`                    | Cancelar pedido                    | ✅ Token     | `backend/app/Http/Controllers/Api/OrderController.php` |
-| **GET**    | `/api/franquias/{franchiseId}/pedidos` | Pedidos de uma franquia            | ✅ Token     | `backend/app/Http/Controllers/Api/OrderController.php` |
-| **GET**    | `/api/meus-pedidos`                    | Meus pedidos (usuário autenticado) | ✅ Token     | `backend/app/Http/Controllers/Api/OrderController.php` |
-
-**Status:** ✅ **Implementado**
-
-**Campos:** numero_pedido (único), status (PENDENTE, PREPARANDO, PRONTO, ENTREGUE, CANCELADO), total, franchise_id, user_id
-
-**Model:** `backend/app/Models/Order.php`
-
-**Controller:** `backend/app/Http/Controllers/Api/OrderController.php`
-
-**Migração:** `backend/database/migrations/2026_04_29_100001_create_orders_table.php`
-
-**Routes:** `backend/routes/api.php`
-
-**Order Items (Relacionamento N:M):**
-
-- **Migração:** `backend/database/migrations/2026_04_29_100002_create_order_items_table.php`
-- **Campos:** quantity, preco_unitario, subtotal
-
----
-
-### 👤 **Autenticação**
-
-| Método   | Endpoint             | Funcionalidade          | Autenticação | Localização                                           |
-| -------- | -------------------- | ----------------------- | ------------ | ----------------------------------------------------- |
-| **POST** | `/api/auth/login`    | Fazer login             | ❌ Público   | `backend/app/Http/Controllers/Api/AuthController.php` |
-| **POST** | `/api/auth/register` | Registrar usuário       | ❌ Público   | `backend/app/Http/Controllers/Api/AuthController.php` |
-| **POST** | `/api/auth/logout`   | Fazer logout            | ✅ Token     | `backend/app/Http/Controllers/Api/AuthController.php` |
-| **GET**  | `/api/auth/me`       | Dados do usuário logado | ✅ Token     | `backend/app/Http/Controllers/Api/AuthController.php` |
-
-**Controller:** `backend/app/Http/Controllers/Api/AuthController.php`
-
-**Routes:** `backend/routes/api.php`
-
----
-
-## ✅ Requisitos Implementados
-
-### Banco de Dados
-
-- ✅ **Banco Relacional:** MySQL/PostgreSQL com Migrations do Laravel
-- ✅ **Relacionamentos:** One-to-Many (Lanchonete ↔ Produto, Lanchonete ↔ Pedido)
-- ✅ **Foreign Keys:** Relacionamentos com integridade referencial
-- ✅ **Índices:** Otimizados para performance
-- ✅ **Timestamps:** created_at, updated_at em todas as tabelas
-
-### Validação
-
-- ✅ **Validação no Backend:** Laravel Form Requests com regras customizadas
-- ✅ **Campos Obrigatórios:** name, email, password, CNPJ, etc validados
-- ✅ **Validação Unique:** Email e CNPJ únicos no banco
-- ✅ **Mensagens Personalizadas:** Feedback claro para o usuário
-- ✅ **Sanitização:** Limpeza de dados de entrada
-
-### Código
-
-- ✅ **Organização:** Pastas estruturadas (Controllers, Models, Requests, Services)
-- ✅ **Legibilidade:** Código comentado e bem formatado
-- ✅ **Padrões:** MVC no backend, Component-based no frontend
-- ✅ **Type Safety:** TypeScript no frontend, Type hints no PHP
-- ✅ **DRY:** Reutilização de código através de Services e Traits
-
-### Segurança
-
-- ✅ **Autenticação:** JWT via Laravel Sanctum
-- ✅ **Autorização:** Middleware de permissões por role
-- ✅ **CORS:** Configurado para frontend local
-- ✅ **Hash de Senhas:** Bcrypt
-- ✅ **CSRF:** Proteção do Laravel
-
----
-
-## 🚀 Como Executar
-
-### Pré-requisitos
-
-- PHP 8.2+
-- Node.js 18+
-- MySQL 8.0+ ou PostgreSQL 14+
-- Composer
-- npm ou pnpm
-
-### Backend (Laravel)
-
-```bash
-# Entrar na pasta
-cd backend
-
-# Instalar dependências
-composer install
-
-# Copiar arquivo de ambiente
-cp .env.example .env
-
-# Gerar chave da aplicação
-php artisan key:generate
-
-# Executar migrações e seeders
-php artisan migrate:fresh --seed
-
-# Rodar servidor
-php artisan serve
-```
-
-**Servidor disponível em:** `http://localhost:8000`
-
-### Frontend (React)
-
-```bash
-# Entrar na pasta
-cd frontend
-
-# Instalar dependências
-npm install
-
-# Criar arquivo .env (opcional)
-cp .env.example .env
-
-# Rodar servidor de desenvolvimento
-npm run dev
-```
-
-**Servidor disponível em:** `http://localhost:5173`
-
----
-
-## 🔐 Credenciais de Teste
-
-| Tipo           | Email                    | Senha  | Acesso                        |
-| -------------- | ------------------------ | ------ | ----------------------------- |
-| **Cliente**    | cliente@tenacious.com    | 123456 | Home, Cardápio, Pedidos       |
-| **Franqueado** | franqueado@tenacious.com | 123456 | `/admin` - Produtos, Pedidos  |
-| **Admin**      | admin@tenacious.com      | 123456 | `/admin` - Dashboard Completo |
-
----
-
-## 📂 Estrutura de Pastas
-
-```
-FRANQUIA_LANCHONETES_API/
-│
-├── backend/                          # Laravel API
-│   ├── app/
-│   │   ├── Http/
-│   │   │   ├── Controllers/
-│   │   │   │   ├── Api/
-│   │   │   │   │   ├── AuthController.php
-│   │   │   │   │   ├── FranchiseController.php
-│   │   │   │   │   ├── ProductController.php
-│   │   │   │   │   └── OrderController.php
-│   │   │   └── Middleware/
-│   │   ├── Models/
-│   │   │   ├── User.php
-│   │   │   ├── Franchise.php
-│   │   │   ├── Product.php
-│   │   │   └── Order.php
-│   │   └── Providers/
-│   ├── database/
-│   │   ├── migrations/
-│   │   ├── seeders/
-│   │   └── factories/
-│   ├── routes/
-│   │   ├── api.php                  # Rotas da API
-│   │   └── web.php
-│   ├── config/
-│   │   ├── app.php
-│   │   ├── auth.php
-│   │   └── cors.php
-│   └── tests/
-│
-├── frontend/                         # React + TypeScript
-│   ├── src/
-│   │   ├── services/
-│   │   │   ├── api.ts               # Axios centralizado
-│   │   │   ├── authService.ts
-│   │   │   └── franchiseService.ts
-│   │   ├── types/
-│   │   │   └── api.ts               # Tipos TypeScript
-│   │   ├── hooks/
-│   │   │   └── useApi.ts            # Hook customizado
-│   │   ├── app/
-│   │   │   ├── context/
-│   │   │   │   └── AuthContext.tsx  # Gerenciamento de auth
-│   │   │   └── components/          # Componentes React
-│   │   └── pages/                   # Páginas da app
-│   ├── index.html
-│   ├── .env
-│   └── vite.config.js
-│
-├── README.md                         # Este arquivo
-└── GUIA_EXECUCAO.md                 # Guia de execução
-```
-
----
-
-## 🎯 Fluxo de Negócio
-
-### 1. **Registro e Login**
-
-```
-Cliente → Página de Registro → Criar Conta → Login → Token JWT → Dashboard
-```
-
-### 2. **Compra de Produtos**
-
-```
-Cliente → Ver Cardápio → Adicionar ao Carrinho → Fazer Pedido → Sistema registra
-```
-
-### 3. **Gerenciamento de Franquia (Admin)**
-
-```
-Franqueado → /admin → Gerenciar Produtos → Gerenciar Pedidos → Análises
-```
+| Seção              | O que faz                                              | Conectado à Home? |
+| ------------------ | ------------------------------------------------------ | :---------------: |
+| Ofertas do Dia     | Define até 6 produtos com preço promocional e validade |        ✅         |
+| Combos Legendários | Seleciona até 2 combos para destaque                   |        ✅         |
+| Banner Hero        | Define a URL da imagem de fundo do topo                |        ✅         |
 
 ---
 
 ## 🔄 Fluxo de Autenticação
 
 1. Usuário envia credenciais para `/api/auth/login`
-2. Backend valida e retorna **JWT Token**
+2. Backend valida e retorna **token Sanctum**
 3. Frontend armazena token em `localStorage`
-4. Cada requisição inclui o token no header: `Authorization: Bearer <token>`
-5. Backend valida o token no middleware `auth:sanctum`
-6. Logout remove o token do backend e frontend
-
----
-
-## 🧪 Testes
-
-### Backend (Pest)
-
-```bash
-cd backend
-php artisan test
-```
-
-### Frontend (Vitest)
-
-```bash
-cd frontend
-npm run test
-```
+4. Cada requisição inclui `Authorization: Bearer <token>`
+5. Backend valida o token via middleware `auth:sanctum`
+6. Logout remove o token do backend e do `localStorage`
 
 ---
 
 ## 📊 Modelos de Dados
 
-### Users (Usuários)
+### Users
 
 ```sql
 CREATE TABLE users (
@@ -411,7 +153,7 @@ CREATE TABLE users (
 );
 ```
 
-### Franchises (Lanchonetes)
+### Franchises
 
 ```sql
 CREATE TABLE franchises (
@@ -425,7 +167,7 @@ CREATE TABLE franchises (
 );
 ```
 
-### Produtos (Implementado)
+### Products
 
 ```sql
 CREATE TABLE products (
@@ -433,16 +175,19 @@ CREATE TABLE products (
   franchise_id BIGINT NOT NULL,
   nome VARCHAR(255) NOT NULL,
   descricao TEXT,
-  preco DECIMAL(10, 2) NOT NULL,
-  categoria ENUM('BURGER', 'BEBIDA', 'ACOMPANHAMENTO', 'SOBREMESA'),
+  preco DECIMAL(10,2) NOT NULL,
+  original_price DECIMAL(10,2),
+  categoria ENUM('BURGER','BEBIDA','ACOMPANHAMENTO','SOBREMESA','COMBO','DOG'),
+  imagem VARCHAR(500),
   ativo BOOLEAN DEFAULT true,
+  is_offer BOOLEAN DEFAULT false,
   created_at TIMESTAMP,
   updated_at TIMESTAMP,
   FOREIGN KEY (franchise_id) REFERENCES franchises(id) ON DELETE CASCADE
 );
 ```
 
-### Pedidos (Implementado)
+### Orders
 
 ```sql
 CREATE TABLE orders (
@@ -450,8 +195,8 @@ CREATE TABLE orders (
   franchise_id BIGINT NOT NULL,
   user_id BIGINT NOT NULL,
   numero_pedido VARCHAR(20) UNIQUE NOT NULL,
-  status ENUM('PENDENTE', 'PREPARANDO', 'PRONTO', 'ENTREGUE', 'CANCELADO'),
-  total DECIMAL(10, 2) DEFAULT 0,
+  status ENUM('PENDENTE','PREPARANDO','PRONTO','ENTREGUE','CANCELADO'),
+  total DECIMAL(10,2) DEFAULT 0,
   created_at TIMESTAMP,
   updated_at TIMESTAMP,
   FOREIGN KEY (franchise_id) REFERENCES franchises(id) ON DELETE CASCADE,
@@ -459,7 +204,7 @@ CREATE TABLE orders (
 );
 ```
 
-### Order Items (Implementado)
+### Order Items
 
 ```sql
 CREATE TABLE order_items (
@@ -467,8 +212,8 @@ CREATE TABLE order_items (
   order_id BIGINT NOT NULL,
   product_id BIGINT NOT NULL,
   quantidade INT DEFAULT 1,
-  preco_unitario DECIMAL(10, 2),
-  subtotal DECIMAL(10, 2),
+  preco_unitario DECIMAL(10,2),
+  subtotal DECIMAL(10,2),
   created_at TIMESTAMP,
   updated_at TIMESTAMP,
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
@@ -479,32 +224,65 @@ CREATE TABLE order_items (
 
 ---
 
-## 🤝 Contribuindo
+## 📂 Estrutura de Pastas
 
-Para adicionar novas funcionalidades:
-
-1. Criar branch para feature: `git checkout -b feature/nova-funcionalidade`
-2. Implementar a funcionalidade
-3. Testar localmente
-4. Fazer commit com mensagem clara
-5. Criar Pull Request
+```
+FRANQUIA_LANCHONETES_API/
+│
+├── backend/                              # Laravel API
+│   ├── app/
+│   │   ├── Http/Controllers/Api/
+│   │   │   ├── AuthController.php
+│   │   │   ├── FranchiseController.php
+│   │   │   ├── ProductController.php
+│   │   │   └── OrderController.php
+│   │   └── Models/
+│   │       ├── User.php
+│   │       ├── Franchise.php
+│   │       ├── Product.php
+│   │       └── Order.php
+│   ├── database/
+│   │   ├── migrations/
+│   │   └── seeders/
+│   └── routes/
+│       └── api.php
+│
+└── frontend/                             # React + TypeScript
+    └── src/
+        ├── app/
+        │   ├── components/
+        │   │   ├── ProductCard.tsx       # Card de produto (home/listas)
+        │   │   ├── ProductModal.tsx      # Modal criar/editar produto
+        │   │   └── HomeManager.tsx       # Painel de configuração da home
+        │   ├── context/
+        │   │   ├── AuthContext.tsx
+        │   │   ├── CartContext.tsx
+        │   │   └── ProductContext.tsx
+        │   ├── data/
+        │   │   └── products.ts           # Dados de fallback (offline)
+        │   └── types/
+        │       └── product.ts
+        ├── pages/
+        │   ├── Home.tsx                  # Página inicial
+        │   ├── Admin.tsx                 # Painel do franqueado
+        │   ├── ProductDetails.tsx
+        │   ├── Burgers.tsx
+        │   ├── Sides.tsx
+        │   ├── Drinks.tsx
+        │   └── Login.tsx
+        └── services/
+            └── api.ts                    # Axios centralizado
+```
 
 ---
 
-## 📞 Suporte
+## 🧪 Contas de Teste
 
-Para dúvidas ou problemas:
-
-1. Consulte a documentação
-2. Verifique os logs do backend: `storage/logs/laravel.log`
-3. Verifique o console do navegador
-4. Confira o Network tab do DevTools
-
----
-
-## 📜 Licença
-
-Este projeto é propriedade da Tenacious Burgers. Todos os direitos reservados.
+| Role       | Email                      | Senha    | Acesso            |
+| ---------- | -------------------------- | -------- | ----------------- |
+| Franqueado | `franqueado@tenacious.com` | `123456` | `/admin`          |
+| Admin      | `admin@tenacious.com`      | `123456` | `/admin`          |
+| Cliente    | `cliente@tenacious.com`    | `123456` | Home e e-commerce |
 
 ---
 
@@ -512,20 +290,25 @@ Este projeto é propriedade da Tenacious Burgers. Todos os direitos reservados.
 
 ### ✅ Implementado
 
-- **Autenticação:** Login, Register, Logout, Get User
-- **Lanchonetes:** CRUD completo (nome, endereco, cnpj único, ativo)
-- **Users:** Com roles (ADMIN, FRANQUEADO, CLIENTE)
+- Autenticação completa (login, register, logout, me)
+- CRUD de produtos com categorias (Burger, Dog, Bebida, Acompanhamento, Combo)
+- CRUD de pedidos com controle de status
+- Painel do franqueado com gestão de cardápio
+- Home Manager: ofertas do dia, combos em destaque e banner hero — todos conectados à Home
+- Carrinho de compras
+- Página de detalhes do produto
+- Filtros por categoria e franquia
+- Fallback para dados locais quando API está offline
 
-### 🚧 A Fazer
+### 🚧 Planejado
 
-- **Produtos:** Model → Migration → Controller → Endpoints
-- **Pedidos:** Model → Migration → Controller → Endpoints
-- **Order Items:** Relacionamento N:M entre Pedidos e Produtos
-- **Análises e Relatórios:** Planejado
-- **Notificações em Tempo Real:** Planejado
+- Análises e relatórios de vendas
+- Notificações em tempo real (WebSocket)
+- Upload de imagens diretamente no painel
+- Módulo de gestão de clientes
 
 ---
 
-**Última atualização:** 29 de Abril de 2026
+**Última atualização:** Maio de 2026
 
-**Desenvolvido com ❤️ para franquias de lanchonetes modernas**
+**Desenvolvido com amor para franquias de lanchonetes modernas**

@@ -12,12 +12,15 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useCart } from "../app/context/CartContext";
-import { products, dailyOffers, promoCombos } from "../app/data/products";
+import { useAuth } from "../app/context/AuthContext";
+import { useProducts } from "../app/context/ProductContext";
 
 export function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToCart, user } = useCart();
+  const { addToCart } = useCart();
+  const { user } = useAuth();
+  const { products, loading } = useProducts();
   const [quantity, setQuantity] = useState(1);
   const [imgError, setImgError] = useState(false);
 
@@ -25,10 +28,17 @@ export function ProductDetails() {
     "https://st4.depositphotos.com/6437402/30960/i/1600/depositphotos_309600474-stock-photo-craft-beef-burger.jpg";
 
   const product = useMemo(() => {
-    const allProducts = [...products, ...dailyOffers, ...promoCombos];
-    const deduped = new Map(allProducts.map((p) => [String(p.id), p]));
-    return deduped.get(String(id));
-  }, [id]);
+    if (!id) return null;
+    return products.find((product) => String(product.id) === String(id));
+  }, [products, id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <p className="text-gray-500 font-semibold">Carregando produto...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -46,13 +56,14 @@ export function ProductDetails() {
     );
   }
 
-  const isCombo = String(id).startsWith("c");
+  const isCombo = product?.category === "combo";
 
   const handleAddToCartAndNavigate = () => {
     if (!user) {
       navigate("/login");
       return;
     }
+
     addToCart({ ...product, quantity });
     navigate("/cart");
   };
@@ -122,7 +133,7 @@ export function ProductDetails() {
               <p className="text-gray-400 font-black uppercase text-[10px] tracking-widest mb-1">
                 Preço Especial
               </p>
-              {product.originalPrice && (
+              {!!product.originalPrice && (
                 <p className="text-gray-400 line-through text-sm font-bold">
                   R$ {product.originalPrice.toFixed(2)}
                 </p>

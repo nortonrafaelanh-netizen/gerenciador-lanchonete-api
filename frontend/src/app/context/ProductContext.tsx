@@ -8,10 +8,12 @@ import React, {
 import api from "../../services/api";
 import { products as sampleProducts } from "../data/products";
 import { Product } from "../types/product";
+import { useAuth } from "./AuthContext";
 
 interface HomeConfig {
   dailyOffersIds: string[];
   featuredIds?: string[];
+  bannerUrl?: string;
   offersData?: Record<
     string,
     {
@@ -98,9 +100,15 @@ const normalizeProduct = (product: any): Product => ({
 });
 
 export function ProductProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [homeConfig, setHomeConfig] = useState<HomeConfig>(DEFAULT_HOME_CONFIG);
   const [loading, setLoading] = useState(true);
+
+  // ID da franquia baseado no usuário logado (fallback para 1)
+  // TODO: Implementar lógica para obter o ID da franquia do usuário/franquia atual
+  // Por enquanto, usa 1 como padrão para franqueados
+  const franchiseId = user?.role === "FRANQUEADO" ? 1 : 1;
 
   // Busca inicial de dados do Laravel/PostgreSQL
   const fetchData = useCallback(async () => {
@@ -110,16 +118,15 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       // Busca produtos e configurações em paralelo
       const [productsRes, configRes] = await Promise.all([
         api.get("/produtos"),
-        api.get(`/franchise/${FRANCHISE_ID}/home-config`),
+        api.get(`/franchise/${franchiseId}/home-config`),
       ]);
 
       if (productsRes.status === 200) {
         const productsData = productsRes.data;
         const rawProducts = productsData.data || productsData || [];
-        const normalizedProducts =
-          rawProducts.length > 0
-            ? rawProducts.map(normalizeProduct)
-            : sampleProducts.map(normalizeProduct);
+        const normalizedProducts = Array.isArray(rawProducts)
+          ? rawProducts.map(normalizeProduct)
+          : sampleProducts.map(normalizeProduct);
         setProducts(normalizedProducts);
       } else {
         console.error(
@@ -187,12 +194,12 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     const newProduct: Product = {
       ...product,
       id: product.id || `prod_${Date.now()}`,
-      franchiseId: String(FRANCHISE_ID),
+      franchiseId: String(franchiseId),
     };
 
     try {
       const response = await api.post("/produtos", {
-        franchise_id: FRANCHISE_ID,
+        franchise_id: franchiseId,
         nome: newProduct.name,
         descricao: newProduct.description,
         preco: newProduct.price,
@@ -225,7 +232,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   // Salva a configuração da Home (Ofertas do Dia) no Banco de Dados
   const saveHomeConfig = async (config: HomeConfig) => {
     try {
-      await api.post(`/franchise/${FRANCHISE_ID}/home-config`, {
+      await api.post(`/franchise/${franchiseId}/home-config`, {
         daily_offers_ids: config.dailyOffersIds,
         offers_data: config.offersData,
       });

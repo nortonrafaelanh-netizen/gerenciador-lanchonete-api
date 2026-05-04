@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../app/context/AuthContext";
-import { Lock, User, ShieldCheck, Eye, EyeOff, Zap } from "lucide-react";
+import { Lock, User, ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -25,21 +25,25 @@ export function Login() {
     }
   };
 
-  const fillCredentials = (type: "admin" | "customer") => {
-    if (type === "admin") {
-      setEmail("admin@tenacious.com");
-      setPassword("123");
-    } else {
-      setEmail("cliente@teste.com");
-      setPassword("123");
-    }
-  };
+  const loginTestUser = async (type: "admin" | "customer") => {
+    const credentials =
+      type === "admin"
+        ? { email: "admin@tenacious.com", password: "123456" }
+        : { email: "cliente@tenacious.com", password: "123456" };
 
-  const handleQuickTest = async () => {
+    setEmail(credentials.email);
+    setPassword(credentials.password);
+    setError("");
     setLoading(true);
-    const success = await login("admin@tenacious.com", "123");
+
+    const success = await login(credentials.email, credentials.password);
     setLoading(false);
-    if (success) navigate("/admin");
+
+    if (success) {
+      navigate(type === "admin" ? "/admin" : "/");
+    } else {
+      setError("Falha ao autenticar com as credenciais de teste.");
+    }
   };
 
   return (
@@ -120,7 +124,8 @@ export function Login() {
           <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Franqueado */}
             <button
-              onClick={() => fillCredentials("admin")}
+              type="button"
+              onClick={() => loginTestUser("admin")}
               className="flex flex-col p-4 bg-orange-50 border-2 border-orange-100 hover:border-orange-400 rounded-2xl transition-all text-left group"
             >
               <div className="flex items-center gap-2 mb-3">
@@ -143,18 +148,19 @@ export function Login() {
                     Senha
                   </span>
                   <code className="text-[10px] bg-white border border-orange-200 px-1.5 py-0.5 rounded-lg text-orange-800 font-bold">
-                    123
+                    123456
                   </code>
                 </div>
               </div>
               <p className="text-[9px] text-orange-400 font-bold mt-2 group-hover:text-orange-600 transition-colors">
-                Clique para preencher →
+                Entrar como franqueado →
               </p>
             </button>
 
             {/* Cliente */}
             <button
-              onClick={() => fillCredentials("customer")}
+              type="button"
+              onClick={() => loginTestUser("customer")}
               className="flex flex-col p-4 bg-blue-50 border-2 border-blue-100 hover:border-blue-400 rounded-2xl transition-all text-left group"
             >
               <div className="flex items-center gap-2 mb-3">
@@ -169,7 +175,7 @@ export function Login() {
                     Login
                   </span>
                   <code className="text-[10px] bg-white border border-blue-200 px-1.5 py-0.5 rounded-lg text-blue-800 font-bold truncate">
-                    cliente@teste.com
+                    cliente@tenacious.com
                   </code>
                 </div>
                 <div className="flex items-center gap-1">
@@ -177,25 +183,15 @@ export function Login() {
                     Senha
                   </span>
                   <code className="text-[10px] bg-white border border-blue-200 px-1.5 py-0.5 rounded-lg text-blue-800 font-bold">
-                    123
+                    123456
                   </code>
                 </div>
               </div>
               <p className="text-[9px] text-blue-400 font-bold mt-2 group-hover:text-blue-600 transition-colors">
-                Clique para preencher →
+                Entrar como cliente →
               </p>
             </button>
           </div>
-
-          {/* Botão acesso rápido */}
-          <button
-            onClick={handleQuickTest}
-            disabled={loading}
-            className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-950 py-3.5 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-60"
-          >
-            <Zap size={18} className="fill-yellow-900" />
-            Acesso Rápido — Franqueado
-          </button>
         </div>
       </div>
     </div>

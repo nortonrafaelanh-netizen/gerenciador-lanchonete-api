@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Plus, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import type { Product } from "../context/CartContext";
 
 interface ProductCardProps {
@@ -11,7 +12,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, originalPrice }: ProductCardProps) {
-  const { addToCart, user } = useCart(); // Adicionado 'user' para verificar login
+  const { addToCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [imageError, setImageError] = useState(false);
 
@@ -52,7 +54,7 @@ export function ProductCard({ product, originalPrice }: ProductCardProps) {
         />
 
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          {originalPrice && originalPrice > product.price && (
+          {!!originalPrice && originalPrice > product.price && (
             <div className="bg-red-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse">
               OFERTA!
             </div>
@@ -87,7 +89,7 @@ export function ProductCard({ product, originalPrice }: ProductCardProps) {
 
         <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-50">
           <div className="flex flex-col">
-            {originalPrice && originalPrice > product.price && (
+            {!!originalPrice && originalPrice > product.price && (
               <span className="text-gray-400 line-through text-xs font-bold">
                 R$ {originalPrice.toFixed(2)}
               </span>

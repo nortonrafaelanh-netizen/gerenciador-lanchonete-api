@@ -44,7 +44,7 @@ const CATEGORY_COLOR = {
 export default function Admin() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { products, createProduct, updateProduct } = useProducts();
+  const { products, setProducts, createProduct, updateProduct } = useProducts();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -75,6 +75,7 @@ export default function Admin() {
       await createProduct(product);
     }
     setEditingProduct(null);
+    setIsModalOpen(false);
   };
 
   const handleLogout = async () => {
@@ -295,7 +296,8 @@ export default function Admin() {
                           "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=800";
                       }}
                     />
-                    {product.originalPrice &&
+                    {/* ✅ Corrigido: !! garante booleano, evita renderizar "0" */}
+                    {!!product.originalPrice &&
                       product.originalPrice > product.price && (
                         <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                           -
@@ -307,6 +309,7 @@ export default function Admin() {
                           %
                         </span>
                       )}
+
                     {product.category === "combo" && (
                       <span className="absolute top-2 left-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
                         <PackagePlus size={11} /> Combo
@@ -328,7 +331,8 @@ export default function Admin() {
                     )}
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        {product.originalPrice &&
+                        {/* ✅ Corrigido: !! evita renderizar "0" */}
+                        {!!product.originalPrice &&
                           product.originalPrice > product.price && (
                             <span className="text-xs text-gray-400 line-through block">
                               R$ {product.originalPrice.toFixed(2)}

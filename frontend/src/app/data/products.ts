@@ -185,7 +185,7 @@ export const menuPorUnidade: Record<string, string[]> = {
 };
 
 export const dailyOffers = products.filter(
-  (p) => p.originalPrice && p.originalPrice > p.price,
+  (p) => !!p.originalPrice && p.originalPrice > p.price,
 );
 
 export const promoCombos = products.filter((p) => p.category === "combo");

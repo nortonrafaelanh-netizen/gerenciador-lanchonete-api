@@ -9,11 +9,21 @@ export function Home() {
   const { products, homeConfig, getDailyOffers } = useProducts();
   const unidadeAtiva = "Rio do Sul";
 
-  // Combos em destaque
+  const DEFAULT_BANNER =
+    "https://images.unsplash.com/photo-1550547660-d9450f859349?w=1600";
+
+  // Banner vindo do admin (com fallback para o padrão)
+  const bannerUrl = homeConfig?.bannerUrl || DEFAULT_BANNER;
+
+  // Combos em destaque — agora controlados pelo admin via featuredIds
   const featuredCombos = useMemo(() => {
     if (homeConfig?.featuredIds?.length > 0) {
-      return products.filter((p) => homeConfig.featuredIds.includes(p.id));
+      const found = homeConfig.featuredIds
+        .map((id: string) => products.find((p) => String(p.id) === String(id)))
+        .filter(Boolean);
+      if (found.length > 0) return found;
     }
+    // Fallback: primeiros 2 combos do cardápio
     return products.filter((p) => p.category === "combo").slice(0, 2);
   }, [products, homeConfig]);
 
@@ -27,8 +37,7 @@ export function Home() {
         <div
           className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-[10s] hover:scale-110"
           style={{
-            backgroundImage:
-              "url(https://images.unsplash.com/photo-1550547660-d9450f859349?w=1600)",
+            backgroundImage: `url(${bannerUrl})`,
             filter: "brightness(0.4)",
           }}
         />
@@ -164,7 +173,7 @@ function ComboCard({ combo, dark = false }) {
           >
             R$ {Number(combo.price).toFixed(2)}
           </span>
-          {combo.originalPrice && combo.originalPrice > combo.price && (
+          {!!combo.originalPrice && combo.originalPrice > combo.price && (
             <span className="text-gray-500 line-through font-bold text-lg">
               R$ {Number(combo.originalPrice).toFixed(2)}
             </span>

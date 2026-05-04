@@ -49,7 +49,7 @@ class ProductController extends Controller
             'nome' => 'required|string|max:255',
             'descricao' => 'nullable|string',
             'preco' => 'required|numeric|min:0.01',
-            'categoria' => 'required|in:BURGER,BEBIDA,ACOMPANHAMENTO,SOBREMESA',
+            'categoria' => 'required|in:BURGER,BEBIDA,ACOMPANHAMENTO,SOBREMESA,COMBO',
             'ativo' => 'sometimes|boolean',
         ]);
 
@@ -85,7 +85,7 @@ class ProductController extends Controller
             'nome' => 'sometimes|required|string|max:255',
             'descricao' => 'nullable|string',
             'preco' => 'sometimes|required|numeric|min:0.01',
-            'categoria' => 'sometimes|required|in:BURGER,BEBIDA,ACOMPANHAMENTO,SOBREMESA',
+            'categoria' => 'sometimes|required|in:BURGER,BEBIDA,ACOMPANHAMENTO,SOBREMESA,COMBO',
             'ativo' => 'sometimes|boolean',
         ]);
 

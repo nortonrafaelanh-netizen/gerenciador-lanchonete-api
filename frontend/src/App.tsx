@@ -15,6 +15,7 @@ import Dogs from "./pages/Dogs";
 import Sides from "./pages/Sides";
 import { Combos } from "./pages/Combos";
 import { Drinks } from "./pages/Drinks";
+import { ProductDetails } from "./pages/ProductDetails";
 import Admin from "./pages/Admin";
 import Cart from "./pages/Cart";
 
@@ -41,6 +42,7 @@ const App: React.FC = () => {
             <Route path="/sides" element={<Sides />} />
             <Route path="/combos" element={<Combos />} />
             <Route path="/drinks" element={<Drinks />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
             <Route
               path="/cart"
               element={
