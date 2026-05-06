@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
@@ -17,6 +17,11 @@ export function ProductCard({ product, originalPrice }: ProductCardProps) {
   const navigate = useNavigate();
   const [imageError, setImageError] = useState(false);
 
+  // Resetar o erro se o ID do produto mudar
+  useEffect(() => {
+    setImageError(false);
+  }, [product.id]);
+
   const imageFallback =
     "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=800";
 
@@ -26,13 +31,10 @@ export function ProductCard({ product, originalPrice }: ProductCardProps) {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-
-    // Bloqueio de segurança: se não houver usuário, redireciona para login
     if (!user) {
       navigate("/login");
       return;
     }
-
     addToCart(product);
   };
 
@@ -40,21 +42,31 @@ export function ProductCard({ product, originalPrice }: ProductCardProps) {
     product.category?.toLowerCase() === "combo" ||
     product.name.toLowerCase().includes("combo");
 
+  // Lógica para garantir que a imagem seja atualizada
+  // Adicionamos um identificador único na URL para evitar que o navegador use o cache da imagem anterior
+  const getImageUrl = () => {
+    if (imageError || !product.image) return imageFallback;
+    return product.image;
+  };
+
   return (
     <div
+      id={product.id}
       onClick={handleNavigateToDetails}
       className="bg-white rounded-3xl shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 group flex flex-col h-full cursor-pointer relative"
     >
       <div className="relative h-52 overflow-hidden bg-gray-100">
         <img
-          src={imageError ? imageFallback : product.image}
+          // A chave 'key' com o id do produto força o React a destruir e recriar a tag img
+          key={product.id}
+          src={getImageUrl()}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           onError={() => setImageError(true)}
         />
 
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          {!!originalPrice && originalPrice > product.price && (
+          {(originalPrice || product.originalPrice) > product.price && (
             <div className="bg-red-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse">
               OFERTA!
             </div>
@@ -67,14 +79,6 @@ export function ProductCard({ product, originalPrice }: ProductCardProps) {
             </div>
           )}
         </div>
-
-        {(!originalPrice || originalPrice <= product.price) && (
-          <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-2xl shadow-sm border border-gray-100">
-            <span className="text-orange-600 font-black text-sm">
-              R$ {product.price.toFixed(2)}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="p-6 flex flex-col flex-1">
@@ -89,9 +93,9 @@ export function ProductCard({ product, originalPrice }: ProductCardProps) {
 
         <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-50">
           <div className="flex flex-col">
-            {!!originalPrice && originalPrice > product.price && (
+            {(originalPrice || product.originalPrice) > product.price && (
               <span className="text-gray-400 line-through text-xs font-bold">
-                R$ {originalPrice.toFixed(2)}
+                R$ {(originalPrice || product.originalPrice).toFixed(2)}
               </span>
             )}
             <span className="text-gray-800 font-black text-2xl tracking-tighter italic">
