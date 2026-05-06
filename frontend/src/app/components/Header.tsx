@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { products } from "../data/products";
+import { products, menuPorUnidade } from "../data/products";
 
 const franquias = [
   "Rio do Sul",
@@ -30,15 +30,31 @@ const franquias = [
 ];
 
 const navLinks = [
-  { to: "/burgers", label: "Burgers", icon: <Beef size={18} /> },
-  { to: "/dogs", label: "Dogs", icon: <Sandwich size={18} /> },
+  {
+    to: "/burgers",
+    label: "Burgers",
+    icon: <Beef size={18} />,
+    category: "burger",
+  },
+  { to: "/dogs", label: "Dogs", icon: <Sandwich size={18} />, category: "dog" },
   {
     to: "/sides",
     label: "Acompanhamentos",
     icon: <UtensilsCrossed size={18} />,
+    category: "side",
   },
-  { to: "/combos", label: "Combos", icon: <Package size={18} /> },
-  { to: "/drinks", label: "Bebidas", icon: <CupSoda size={18} /> },
+  {
+    to: "/combos",
+    label: "Combos",
+    icon: <Package size={18} />,
+    category: "combo",
+  },
+  {
+    to: "/drinks",
+    label: "Bebidas",
+    icon: <CupSoda size={18} />,
+    category: "drink",
+  },
 ];
 
 export function Header() {
@@ -49,7 +65,7 @@ export function Header() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showUnidade, setShowUnidade] = useState(false);
 
-  const isFranchisee = user?.role === "FRANQUEADO"; // ← única declaração
+  const isFranchisee = user?.role === "FRANQUEADO";
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,19 +79,25 @@ export function Header() {
 
   useEffect(() => {
     if (searchTerm.trim().length > 1) {
+      const produtosPermitidosIds = menuPorUnidade[unidade] || [];
+
       const filtered = products
-        .filter(
-          (p) =>
+        .filter((p) => {
+          const pertenceAUnidade = produtosPermitidosIds.includes(p.id);
+          const correspondeBusca =
             p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.category?.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
+            p.category?.toLowerCase().includes(searchTerm.toLowerCase());
+
+          return pertenceAUnidade && correspondeBusca;
+        })
         .slice(0, 6);
+
       setSuggestions(filtered);
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, unidade]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -88,16 +110,38 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelectProduct = (productId) => {
+  const handleSelectProduct = (product) => {
     setSearchTerm("");
     setShowSuggestions(false);
-    navigate(`/product/${productId}`);
+
+    // Mapeamento de categorias para rotas
+    const categoryRoutes = {
+      burger: "/burgers",
+      dog: "/dogs",
+      side: "/sides",
+      combo: "/combos",
+      drink: "/drinks",
+    };
+
+    const targetPath = categoryRoutes[product.category] || "/burgers";
+
+    // Navega para a página com o hash do ID do produto
+    navigate(`${targetPath}#${product.id}`);
+
+    // Se já estiver na página, faz o scroll manual
+    if (location.pathname === targetPath) {
+      setTimeout(() => {
+        const element = document.getElementById(product.id);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+    }
   };
 
   return (
     <header className="bg-orange-600 text-white shadow-xl sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        {/* LINHA SUPERIOR */}
         <div className="flex items-center justify-between h-20 gap-4">
           <Link
             to="/"
@@ -131,7 +175,7 @@ export function Header() {
                 {suggestions.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => handleSelectProduct(product.id)}
+                    onClick={() => handleSelectProduct(product)}
                     className="w-full flex items-center gap-3 p-3 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-none"
                   >
                     <div className="w-12 h-12 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
@@ -164,9 +208,7 @@ export function Header() {
             )}
           </div>
 
-          {/* Ações direita */}
           <div className="flex items-center gap-3">
-            {/* Seletor de Unidade */}
             <div className="relative hidden lg:block" ref={unidadeRef}>
               <button
                 onClick={() => setShowUnidade(!showUnidade)}
@@ -202,7 +244,6 @@ export function Header() {
               )}
             </div>
 
-            {/* Carrinho */}
             <Link
               to="/cart"
               className="relative p-2.5 bg-yellow-400 text-orange-900 rounded-xl hover:bg-yellow-300 transition-all shadow-md active:scale-95"
@@ -215,7 +256,6 @@ export function Header() {
               )}
             </Link>
 
-            {/* Usuário */}
             {user ? (
               <div className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
                 <Link
@@ -251,7 +291,6 @@ export function Header() {
           </div>
         </div>
 
-        {/* NAVEGAÇÃO DE CATEGORIAS */}
         <div className="border-t border-orange-400/30 flex items-center">
           <nav className="flex overflow-x-auto py-1">
             {navLinks.map((link) => (
@@ -276,7 +315,6 @@ export function Header() {
               </Link>
             ))}
 
-            {/* Link painel — dentro do return ✓ */}
             {isFranchisee && (
               <Link
                 to="/admin"

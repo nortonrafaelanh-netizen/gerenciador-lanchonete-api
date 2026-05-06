@@ -65,8 +65,9 @@ export const products: Product[] = [
   },
 
   // --- DOGS ---
+  // ✅ IDs corrigidos: dogs usam prefixo "dog" para não conflitar com drinks
   {
-    id: "d1",
+    id: "dog1",
     name: "Hot Dog Tradicional",
     price: 12.9,
     originalPrice: 15.9,
@@ -77,7 +78,7 @@ export const products: Product[] = [
       "Salsicha premium, purê, batata palha, milho, ervilha e molhos",
   },
   {
-    id: "d2",
+    id: "dog2",
     name: "Hot Dog Especial",
     price: 16.9,
     category: "dog",
@@ -86,7 +87,7 @@ export const products: Product[] = [
     description: "Salsicha artesanal, catupiry, bacon, cheddar e batata palha",
   },
   {
-    id: "d3",
+    id: "dog3",
     name: "Hot Dog Completo",
     price: 19.9,
     category: "dog",
@@ -124,8 +125,11 @@ export const products: Product[] = [
       "https://images.unsplash.com/photo-1562967914-608f82629710?q=80&w=800",
     description: "10 unidades de nuggets crocantes",
   },
+
+  // --- DRINKS ---
+  // ✅ IDs corrigidos: drinks usam prefixo "dr" para evitar conflito com dogs (d1, d2, d3)
   {
-    id: "s4",
+    id: "dr1",
     name: "Refrigerante Lata",
     price: 5.0,
     category: "drink",
@@ -134,7 +138,7 @@ export const products: Product[] = [
     description: "Refrigerante lata 350ml (Cola, Guaraná, Limão ou Laranja)",
   },
   {
-    id: "d5",
+    id: "dr2",
     name: "Suco Natural",
     price: 8.9,
     category: "drink",
@@ -144,7 +148,7 @@ export const products: Product[] = [
       "Suco natural feito na hora, escolha entre laranja ou maracujá",
   },
   {
-    id: "d6",
+    id: "dr3",
     name: "Cerveja Long Neck",
     price: 11.9,
     category: "drink",
@@ -175,13 +179,14 @@ export const products: Product[] = [
   },
 ];
 
+// ✅ menuPorUnidade atualizado com os IDs corrigidos
 export const menuPorUnidade: Record<string, string[]> = {
-  "Rio do Sul": products.map((p) => p.id),
-  Atalanta: ["b1", "b2", "b4", "d1", "s1", "s4"],
-  Ituporanga: ["b1", "b2", "b3", "b5", "d2", "d3", "s1", "s2", "s4"],
-  Agrolândia: ["b1", "b2", "b6", "d1", "s1", "s4"],
-  Laurentino: ["b1", "b2", "b4", "b5", "d1", "d2", "s1", "s4"],
-  "Trombudo Central": ["b1", "b2", "b3", "d1", "s1", "s4"],
+  "Rio do Sul": products.map((p) => p.id), // Todas as unidades
+  Atalanta: ["b1", "b2", "b4", "dog1", "s1", "dr1"],
+  Ituporanga: ["b1", "b2", "b3", "b5", "dog2", "dog3", "s1", "s2", "dr1"],
+  Agrolândia: ["b1", "b2", "b6", "dog1", "s1", "dr1"],
+  Laurentino: ["b1", "b2", "b4", "b5", "dog1", "dog2", "s1", "dr1"],
+  "Trombudo Central": ["b1", "b2", "b3", "dog1", "s1", "dr1"],
 };
 
 export const dailyOffers = products.filter(
