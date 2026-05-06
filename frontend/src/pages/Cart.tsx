@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../app/context/CartContext";
 import { useAuth } from "../app/context/AuthContext";
@@ -19,7 +19,8 @@ import {
   Package,
 } from "lucide-react";
 
-// ── Tipos ────────────────────────────────────────────────────────
+// ── Tipos ────────────────────────────────────────────────────────────────────
+
 type OrderStatus = "preparing" | "ontheway" | "delivered";
 
 interface Order {
@@ -32,7 +33,8 @@ interface Order {
   createdAt: string;
 }
 
-// ── Dados dos status ─────────────────────────────────────────────
+// ── Configuração dos status ───────────────────────────────────────────────────
+
 const STATUS_STEPS = [
   {
     key: "preparing",
@@ -61,16 +63,83 @@ const STATUS_STEPS = [
     border: "border-green-200",
     description: "Pedido entregue! Bom apetite!",
   },
-];
+] as const;
 
 const STATUS_ORDER: OrderStatus[] = ["preparing", "ontheway", "delivered"];
 
-// ── Componente principal ─────────────────────────────────────────
+// Intervalo de polling para atualizar status (ms)
+const POLL_INTERVAL = 5000;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Converte o status retornado pelo backend para o tipo interno OrderStatus.
+ * Ajuste os casos conforme os valores reais da sua API.
+ */
+const mapBackendStatus = (status: string): OrderStatus => {
+  const normalized = String(status).toUpperCase();
+  if (normalized === "ENTREGUE") return "delivered";
+  if (normalized === "PRONTO") return "ontheway";
+  if (normalized === "PREPARANDO" || normalized === "PENDENTE")
+    return "preparing";
+  if (normalized === "CANCELADO") return "delivered";
+  return "preparing";
+};
+
+/** Converte o status interno para o valor que o backend espera no PATCH. */
+const backendStatusFor = (status: OrderStatus): string => {
+  if (status === "preparing") return "PREPARANDO";
+  if (status === "ontheway") return "PRONTO";
+  return "ENTREGUE";
+};
+
+/** Normaliza a resposta da API de criação em um objeto Order padronizado. */
+const normalizeOrder = (response: any): Order => {
+  const order = response.data?.data || response.data || response;
+
+  const items = Array.isArray(order.products)
+    ? order.products.map((product: any) => ({
+        id: String(
+          product.id ??
+            product.product_id ??
+            product.pivot?.product_id ??
+            product._id ??
+            Math.random(),
+        ),
+        name: product.nome ?? product.name ?? "Produto",
+        description: product.descricao ?? product.description ?? "",
+        price: Number(
+          product.preco ?? product.price ?? product.pivot?.preco_unitario ?? 0,
+        ),
+        image:
+          product.image ??
+          product.foto ??
+          product.photo ??
+          "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=100",
+        quantity: Number(product.pivot?.quantidade ?? product.quantidade ?? 1),
+      }))
+    : [];
+
+  return {
+    id: String(order.id ?? order._id ?? `PED-${Date.now()}`),
+    orderNumber: String(
+      order.numero_pedido ?? order.order_number ?? `PED-${Date.now()}`,
+    ),
+    items,
+    total: Number(order.total ?? 0),
+    status: mapBackendStatus(order.status ?? "PENDENTE"),
+    trackingUrl: String(order.tracking_url ?? order.trackingUrl ?? ""),
+    createdAt: new Date().toLocaleString("pt-BR"),
+  };
+};
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
 export default function Cart() {
-  const { cart, updateQuantity, removeFromCart, total, clearCart, unidade } =
-    useCart();
+  const { cart, updateQuantity, removeFromCart, total, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+
   const isFranchisee = user?.role === "FRANQUEADO";
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -82,128 +151,173 @@ export default function Cart() {
   const [savingStatusFor, setSavingStatusFor] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const mapBackendStatus = (status: string): OrderStatus => {
-    const normalized = String(status).toUpperCase();
-    if (normalized === "ENTREGUE") return "delivered";
-    if (normalized === "PRONTO") return "ontheway";
-    if (normalized === "PREPARANDO" || normalized === "PENDENTE")
-      return "preparing";
-    if (normalized === "CANCELADO") return "delivered";
-    return "preparing";
-  };
+  // Guard contra duplo clique / StrictMode double-invoke
+  const isSubmitting = useRef(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const backendStatusFor = (status: OrderStatus): string => {
-    if (status === "preparing") return "PREPARANDO";
-    if (status === "ontheway") return "PRONTO";
-    return "ENTREGUE";
-  };
+  // ── Polling de status ───────────────────────────────────────────────────────
 
-  const normalizeOrder = (order: any): Order => {
-    const items = Array.isArray(order.products)
-      ? order.products.map((product: any) => ({
-          id: String(
-            product.id ??
-              product.product_id ??
-              product.pivot?.product_id ??
-              product._id ??
-              Math.random(),
-          ),
-          name: product.nome ?? product.name ?? "Produto",
-          description: product.descricao ?? product.description ?? "",
-          price: Number(
-            product.preco ??
-              product.price ??
-              product.pivot?.preco_unitario ??
-              0,
-          ),
-          image:
-            product.image ??
-            product.foto ??
-            product.photo ??
-            "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=100",
-          quantity: Number(
-            product.pivot?.quantidade ?? product.quantidade ?? 1,
-          ),
-        }))
-      : [];
+  const pollOrderStatuses = useCallback(async () => {
+    setOrders((prev) => {
+      const active = prev.filter((o) => o.status !== "delivered");
+      if (active.length === 0) return prev;
 
-    return {
-      id: String(
-        order.id ?? order._id ?? order.numero_pedido ?? `PED-${Date.now()}`,
-      ),
-      orderNumber: String(
-        order.numero_pedido ?? order.order_number ?? `PED-${Date.now()}`,
-      ),
-      items,
-      total: Number(order.total ?? 0),
-      status: mapBackendStatus(order.status ?? "PENDENTE"),
-      trackingUrl: String(order.tracking_url ?? order.trackingUrl ?? ""),
-      createdAt: String(
-        order.created_at ??
-          order.createdAt ??
-          new Date().toLocaleString("pt-BR"),
-      ),
+      active.forEach(async (order) => {
+        try {
+          const response = await orderService.getById(order.id);
+          const data = response.data?.data || response.data || response;
+          const newStatus = mapBackendStatus(data.status ?? "PENDENTE");
+
+          setOrders((current) =>
+            current.map((o) =>
+              o.id === order.id ? { ...o, status: newStatus } : o,
+            ),
+          );
+        } catch {
+          // Silencia erros de polling para não atrapalhar o usuário
+        }
+      });
+
+      return prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    const hasActive = orders.some((o) => o.status !== "delivered");
+
+    if (hasActive && !pollRef.current) {
+      pollRef.current = setInterval(pollOrderStatuses, POLL_INTERVAL);
+    }
+    if (!hasActive && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     };
-  };
+  }, [orders, pollOrderStatuses]);
+
+  // ── Finalizar pedido ────────────────────────────────────────────────────────
 
   const handleCheckout = async () => {
-    setCheckoutError(null);
     if (cart.length === 0) return;
-
-    const franchiseIds = Array.from(
-      new Set(cart.map((item) => item.franchiseId ?? "")),
-    ).filter(Boolean);
-
-    if (franchiseIds.length > 1) {
-      setCheckoutError(
-        "O carrinho contém produtos de mais de uma unidade. Separe os pedidos por unidade.",
-      );
+    if (!user) {
+      setCheckoutError("Logue para finalizar o pedido.");
       return;
     }
 
-    const franchiseId = Number(franchiseIds[0] || 1);
+    // Bloqueia chamadas simultâneas (duplo clique, re-render, StrictMode)
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
 
-    const productsPayload = cart.map((item) => {
-      const productId = Number(item.id);
-      return {
-        product_id: productId,
-        quantidade: item.quantity || 1,
-      };
-    });
-
-    if (productsPayload.some((item) => Number.isNaN(item.product_id))) {
-      setCheckoutError(
-        "Seu carrinho contém produtos inválidos. Atualize o cardápio para carregar os produtos do backend.",
-      );
-      return;
-    }
-
-    const orderPayload = {
-      franchise_id: franchiseId,
-      numero_pedido: `PED-${Date.now()}`,
-      products: productsPayload,
-    };
-
+    setCheckoutError(null);
     setCreatingOrder(true);
 
     try {
-      const createdOrder = await orderService.create(orderPayload);
-      const normalizedOrder = normalizeOrder(createdOrder);
-      setOrders((prev) => [normalizedOrder, ...prev]);
-      clearCart();
-      setExpandedOrder(normalizedOrder.id);
-    } catch (error) {
-      console.error("Erro criando pedido:", error);
-      setCheckoutError(
-        error?.message ||
-          "Não foi possível finalizar o pedido. Tente novamente.",
+      // Valida que não há produtos de unidades diferentes no mesmo carrinho
+      const franchiseIds = Array.from(
+        new Set(cart.map((item) => item.franchiseId ?? "")),
+      ).filter(Boolean);
+
+      if (franchiseIds.length > 1) {
+        setCheckoutError(
+          "O carrinho contém produtos de mais de uma unidade. Separe os pedidos por unidade.",
+        );
+        return;
+      }
+
+      const franchiseId =
+        (Number(franchiseIds[0] || null) || user.franchise_id) ??
+        user.franchiseId ??
+        1;
+
+      // Agrupa produtos com mesmo product_id somando quantidades
+      // evita a Unique violation em order_items_order_id_product_id_unique
+      const productsPayload = Object.values(
+        cart.reduce(
+          (acc, item) => {
+            const rawId = String(item.id || item.product_id);
+            const cleanId = parseInt(rawId.replace(/\D/g, ""), 10);
+
+            if (Number.isNaN(cleanId)) return acc; // produto inválido, ignora
+
+            if (acc[cleanId]) {
+              acc[cleanId].quantidade += Number(item.quantity || 1);
+            } else {
+              acc[cleanId] = {
+                product_id: cleanId,
+                quantidade: Number(item.quantity || 1),
+              };
+            }
+            return acc;
+          },
+          {} as Record<number, { product_id: number; quantidade: number }>,
+        ),
       );
+
+      if (productsPayload.length === 0) {
+        setCheckoutError(
+          "Seu carrinho contém produtos inválidos. Atualize o cardápio.",
+        );
+        return;
+      }
+
+      const orderPayload = {
+        franchise_id: franchiseId,
+        numero_pedido: `TB-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
+        products: productsPayload,
+      };
+
+      console.log("Payload enviado:", JSON.stringify(orderPayload, null, 2));
+
+      const response = await orderService.create(orderPayload);
+      const newOrder = normalizeOrder(response);
+
+      setOrders((prev) => [newOrder, ...prev]);
+      clearCart();
+      setExpandedOrder(newOrder.id); // Abre o pedido recém-criado automaticamente
+    } catch (error: any) {
+      const serverResponse =
+        error.response?.data ?? (error.status ? error : null);
+
+      console.error("Erro completo do servidor:", serverResponse);
+
+      const status = error.response?.status ?? error.status;
+
+      if (status === 422) {
+        const errors = serverResponse?.errors;
+        if (errors) {
+          const firstKey = Object.keys(errors)[0];
+          setCheckoutError(`${serverResponse.message}: ${errors[firstKey][0]}`);
+        } else {
+          setCheckoutError(serverResponse?.message || "Erro de validação.");
+        }
+      } else if (status === 500) {
+        const msg = serverResponse?.message || serverResponse?.error;
+        setCheckoutError(
+          msg
+            ? `Erro do servidor: ${msg}`
+            : "Erro interno do servidor. Verifique os logs do backend.",
+        );
+      } else {
+        setCheckoutError(
+          error?.message ||
+            "Não foi possível finalizar o pedido. Tente novamente.",
+        );
+      }
     } finally {
+      isSubmitting.current = false;
       setCreatingOrder(false);
     }
   };
 
-  // Franqueado avança status
+  // ── Painel do franqueado ────────────────────────────────────────────────────
+
+  /** Avança o status do pedido para o próximo passo e persiste no backend. */
   const advanceStatus = async (orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
@@ -227,7 +341,7 @@ export default function Cart() {
     }
   };
 
-  // Franqueado salva link de rastreio
+  /** Salva o link de rastreio localmente (opcional: persistir via API). */
   const saveTracking = (orderId: string) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -238,7 +352,8 @@ export default function Cart() {
     );
   };
 
-  // ── Carrinho vazio ───────────────────────────────────────────
+  // ── Carrinho vazio ──────────────────────────────────────────────────────────
+
   if (cart.length === 0 && orders.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -263,6 +378,8 @@ export default function Cart() {
     );
   }
 
+  // ── Render principal ────────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-5xl">
@@ -270,9 +387,10 @@ export default function Cart() {
           {cart.length > 0 ? "Seu Pedido" : "Acompanhar Pedidos"}
         </h1>
 
-        {/* ── CARRINHO ATIVO ── */}
+        {/* ── CARRINHO ATIVO ─────────────────────────────────────────────── */}
         {cart.length > 0 && (
           <div className="grid lg:grid-cols-3 gap-6 mb-12">
+            {/* Itens */}
             <div className="lg:col-span-2 space-y-3">
               {cart.map((item) => (
                 <div
@@ -280,7 +398,11 @@ export default function Cart() {
                   className="flex gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100"
                 >
                   <img
-                    src={item.image}
+                    src={
+                      item.image ||
+                      item.image_path ||
+                      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=300"
+                    }
                     alt={item.name}
                     className="w-24 h-24 object-cover rounded-xl flex-shrink-0"
                     onError={(e) => {
@@ -292,11 +414,13 @@ export default function Cart() {
                     <h3 className="font-black text-lg text-gray-800 leading-tight">
                       {item.name}
                     </h3>
-                    <p className="text-gray-400 text-sm line-clamp-1">
-                      {item.description}
-                    </p>
+                    {item.description && (
+                      <p className="text-gray-400 text-sm line-clamp-1">
+                        {item.description}
+                      </p>
+                    )}
                     <p className="text-orange-600 font-bold mt-1">
-                      R$ {item.price.toFixed(2)}
+                      R$ {Number(item.price).toFixed(2)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end justify-between flex-shrink-0">
@@ -327,8 +451,9 @@ export default function Cart() {
                         <Plus size={14} />
                       </button>
                     </div>
-                    <p className="font-black text-gray-800">
-                      R$ {(item.price * (item.quantity || 1)).toFixed(2)}
+                    <p className="font-black text-gray-800 text-sm">
+                      R${" "}
+                      {(Number(item.price) * (item.quantity || 1)).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -357,19 +482,17 @@ export default function Cart() {
                     </span>
                   </div>
                 </div>
+
                 {checkoutError && (
-                  <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+                  <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm font-bold">
                     {checkoutError}
                   </div>
                 )}
+
                 <button
                   onClick={handleCheckout}
                   disabled={creatingOrder}
-                  className={`w-full py-4 rounded-xl font-black transition-colors shadow-lg shadow-orange-100 uppercase tracking-widest italic ${
-                    creatingOrder
-                      ? "bg-orange-300 text-white cursor-not-allowed"
-                      : "bg-orange-600 text-white hover:bg-orange-700"
-                  }`}
+                  className="w-full py-4 rounded-xl font-black transition-colors shadow-lg shadow-orange-100 uppercase tracking-widest italic bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creatingOrder ? "Processando Pedido..." : "Finalizar Pedido"}
                 </button>
@@ -384,13 +507,24 @@ export default function Cart() {
           </div>
         )}
 
-        {/* ── PEDIDOS EM ANDAMENTO ── */}
+        {/* ── PEDIDOS EM ANDAMENTO ───────────────────────────────────────── */}
         {orders.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-black text-gray-800 uppercase italic tracking-tighter flex items-center gap-2">
-              <Package size={24} className="text-orange-500" />
-              Pedidos em Andamento
-            </h2>
+            {cart.length > 0 && (
+              <h2 className="text-2xl font-black text-gray-800 uppercase italic tracking-tighter flex items-center gap-2 mt-4">
+                <Package size={24} className="text-orange-500" />
+                Pedidos em Andamento
+              </h2>
+            )}
+            {cart.length === 0 && (
+              <h2 className="text-2xl font-black text-gray-800 uppercase italic tracking-tighter flex items-center gap-2">
+                <Package size={24} className="text-orange-500" />
+                Pedidos em Andamento
+              </h2>
+            )}
+            <p className="text-xs text-gray-400 font-bold -mt-2">
+              Status atualizado automaticamente a cada {POLL_INTERVAL / 1000}s
+            </p>
 
             {orders.map((order) => {
               const currentStep = STATUS_STEPS.find(
@@ -405,7 +539,7 @@ export default function Cart() {
                   key={order.id}
                   className={`bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all ${currentStep.border}`}
                 >
-                  {/* Header do pedido */}
+                  {/* Header clicável */}
                   <div
                     className={`flex items-center justify-between p-5 cursor-pointer ${currentStep.bg}`}
                     onClick={() =>
@@ -413,7 +547,7 @@ export default function Cart() {
                     }
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl bg-white shadow-sm`}>
+                      <div className="p-2 rounded-xl bg-white shadow-sm">
                         <currentStep.icon
                           size={22}
                           className={currentStep.color}
@@ -440,6 +574,7 @@ export default function Cart() {
                     </div>
                   </div>
 
+                  {/* Conteúdo expandido */}
                   {isExpanded && (
                     <div className="p-5 space-y-6">
                       {/* Linha de progresso */}
@@ -460,17 +595,12 @@ export default function Cart() {
                                       : "bg-gray-100 border-gray-200"
                                   }`}
                                 >
-                                  {done ? (
-                                    <StepIcon
-                                      size={18}
-                                      className={step.color}
-                                    />
-                                  ) : (
-                                    <StepIcon
-                                      size={18}
-                                      className="text-gray-300"
-                                    />
-                                  )}
+                                  <StepIcon
+                                    size={18}
+                                    className={
+                                      done ? step.color : "text-gray-300"
+                                    }
+                                  />
                                 </div>
                                 <span
                                   className={`text-[10px] font-bold text-center leading-tight ${
@@ -504,7 +634,7 @@ export default function Cart() {
                         </p>
                       </div>
 
-                      {/* Link de rastreio (cliente vê, franqueado edita) */}
+                      {/* Link de rastreio (cliente visualiza) */}
                       {order.trackingUrl && !isFranchisee && (
                         <a
                           href={order.trackingUrl}
@@ -545,21 +675,23 @@ export default function Cart() {
                               </span>
                               <span className="text-sm font-bold text-gray-700">
                                 R${" "}
-                                {(item.price * (item.quantity || 1)).toFixed(2)}
+                                {(
+                                  Number(item.price) * (item.quantity || 1)
+                                ).toFixed(2)}
                               </span>
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      {/* ── PAINEL DO FRANQUEADO ── */}
+                      {/* ── PAINEL DO FRANQUEADO ─────────────────────────── */}
                       {isFranchisee && (
                         <div className="border-t border-dashed border-gray-200 pt-5 space-y-4">
                           <p className="text-xs font-black uppercase text-orange-500 tracking-widest">
                             Controle do Franqueado
                           </p>
 
-                          {/* Link de rastreio */}
+                          {/* Link de rastreio (franqueado edita) */}
                           <div>
                             <label className="text-xs font-bold text-gray-500 block mb-1">
                               Link de rastreio
@@ -602,11 +734,13 @@ export default function Cart() {
                           {!isDelivered && (
                             <button
                               onClick={() => advanceStatus(order.id)}
-                              className="w-full py-3 bg-orange-600 text-white rounded-xl font-black hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+                              disabled={savingStatusFor === order.id}
+                              className="w-full py-3 bg-orange-600 text-white rounded-xl font-black hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <CheckCircle size={18} />
-                              Avançar para:{" "}
-                              {STATUS_STEPS[currentIdx + 1]?.label}
+                              {savingStatusFor === order.id
+                                ? "Salvando..."
+                                : `Avançar para: ${STATUS_STEPS[currentIdx + 1]?.label}`}
                             </button>
                           )}
 
