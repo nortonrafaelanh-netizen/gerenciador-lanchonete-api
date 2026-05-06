@@ -1,25 +1,30 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
 import { ProductCard } from "../app/components/ProductCard";
-import { useProducts } from "../app/context/ProductContext";
 import { useCart } from "../app/context/CartContext";
 import { Loader2, CupSoda, MapPin, Tag, Sparkles, Waves } from "lucide-react";
+// Importação dos dados estáticos sincronizados
+import { products, menuPorUnidade } from "../app/data/products";
 
 export function Drinks() {
   const { unidade } = useCart();
-  const { products, loading: productsLoading } = useProducts();
   const [items, setItems] = useState([]);
   const [promocoes, setPromocoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Pega os IDs permitidos para a unidade selecionada
+    const produtosPermitidosIds = menuPorUnidade[unidade] ?? [];
+
+    // 2. Filtra pela categoria 'drink' e valida se o ID está na lista da unidade
     let data = products.filter(
       (p) =>
         p.category === "drink" &&
         p.active !== false &&
-        String(p.franchiseName).toLowerCase() === unidade.toLowerCase(),
+        produtosPermitidosIds.includes(p.id),
     );
 
+    // 3. Fallback: Se a unidade não tiver nada específico, mostra todas as bebidas
     if (data.length === 0) {
       data = products.filter(
         (p) => p.category === "drink" && p.active !== false,
@@ -30,19 +35,15 @@ export function Drinks() {
     setPromocoes(
       data.filter((p) => !!p.originalPrice && p.originalPrice > p.price),
     );
-  }, [products, unidade]);
 
-  useEffect(() => {
-    if (!productsLoading) {
-      const timer = setTimeout(() => setLoading(false), 250);
-      return () => clearTimeout(timer);
-    }
-  }, [productsLoading]);
+    const timer = setTimeout(() => setLoading(false), 250);
+    return () => clearTimeout(timer);
+  }, [unidade]);
 
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
-        <Loader2 className="animate-spin text-orange-600" size={48} />
+        <Loader2 className="animate-spin text-blue-600" size={48} />
         <p className="text-gray-600 font-bold animate-pulse uppercase tracking-widest text-xs">
           Gelando as bebidas em {unidade}...
         </p>
@@ -52,7 +53,7 @@ export function Drinks() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Banner de Promoções Dinâmico para Bebidas */}
+      {/* Banner de Promoções Dinâmico (Estilo Marquee Azul) */}
       {promocoes.length > 0 && (
         <div className="bg-blue-600 py-3 overflow-hidden border-b border-blue-700">
           <div className="flex whitespace-nowrap animate-marquee items-center gap-10">
@@ -119,7 +120,7 @@ export function Drinks() {
           </section>
         )}
 
-        {/* Listagem Geral de Bebidas */}
+        {/* Listagem Geral de Bebidas (Grid de 4 colunas para otimizar espaço) */}
         <section>
           <div className="flex items-center gap-3 mb-8">
             <CupSoda className="text-gray-400" />

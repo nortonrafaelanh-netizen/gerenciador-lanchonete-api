@@ -1,53 +1,29 @@
-import React from "react";
-import "./OfertasDoDia.css"; // Importando o CSS
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  originalPrice?: number; // Preço antigo cortado
-  image_path: string;
-  isOffer: boolean;
-}
+// @ts-nocheck
+import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Sparkles, ArrowRight, ShoppingCart } from "lucide-react";
+import "./OfertasDoDia.css";
+// Importamos os dados reais e a lógica de unidade se necessário
+import { products } from "../app/data/products";
+import { useCart } from "../app/context/CartContext";
 
 const OfertasDoDia: React.FC = () => {
-  // Simulando os dados que viriam da sua API Laravel
-  const ofertas: Product[] = [
-    {
-      id: 1,
-      name: "Classic Burger",
-      description:
-        "Hambúrguer artesanal 180g, queijo cheddar, alface, tomate e molho especial",
-      price: 18.9,
-      originalPrice: 22.9,
-      image_path: "caminho-da-imagem-1.jpg",
-      isOffer: true,
-    },
-    {
-      id: 2,
-      name: "Hot Dog Tradicional",
-      description:
-        "Salsicha premium, purê, batata palha, milho, ervilha e molhos",
-      price: 12.9,
-      originalPrice: 15.9,
-      image_path: "caminho-quebrado.jpg", // Exemplo para testar o fallback
-      isOffer: true,
-    },
-    {
-      id: 3,
-      name: "Batata Frita",
-      description: "Batata frita crocante sequinha",
-      price: 9.9,
-      originalPrice: 12.9,
-      image_path: "caminho-da-imagem-3.jpg",
-      isOffer: true,
-    },
-  ];
+  const navigate = useNavigate();
+  const { unidade } = useCart();
 
-  const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
-  const fallbackImage = "/assets/placeholder-food.png"; // Coloque uma imagem padrão na pasta public
+  // Filtramos apenas os produtos que possuem preço promocional e estão ativos
+  // O useMemo garante que essa filtragem não rode a cada renderização à toa
+  const ofertas = useMemo(() => {
+    return products
+      .filter(
+        (p) =>
+          p.active !== false && p.originalPrice && p.originalPrice > p.price,
+      )
+      .slice(0, 3); // Pegamos apenas as 3 principais ofertas para o destaque da Home
+  }, []);
+
+  const fallbackImage =
+    "https://st4.depositphotos.com/6437402/30960/i/1600/depositphotos_309600474-stock-photo-craft-beef-burger.jpg";
 
   const handleImageError = (
     e: React.SyntheticEvent<HTMLImageElement, Event>,
@@ -55,49 +31,67 @@ const OfertasDoDia: React.FC = () => {
     e.currentTarget.src = fallbackImage;
   };
 
+  if (ofertas.length === 0) return null;
+
   return (
-    <section className="ofertas-section">
-      <div className="ofertas-header">
-        <h2>
-          <span role="img" aria-label="fogo">
-            🔥
-          </span>{" "}
-          Ofertas do Dia
-        </h2>
-        <a href="/ofertas" className="ver-todos">
-          Ver todos &rarr;
-        </a>
+    <section className="ofertas-section container mx-auto px-4 py-12">
+      <div className="ofertas-header flex items-center justify-between mb-8">
+        <div className="flex flex-col">
+          <span className="text-orange-600 font-black uppercase text-xs tracking-widest mb-1 flex items-center gap-2">
+            <Sparkles size={14} /> Economia Real em {unidade}
+          </span>
+          <h2 className="text-4xl font-black text-gray-900 uppercase italic tracking-tighter">
+            Ofertas <span className="text-orange-600">do Dia</span>
+          </h2>
+        </div>
+        <button
+          onClick={() => navigate("/combos")}
+          className="ver-todos flex items-center gap-2 text-gray-400 hover:text-orange-600 font-bold uppercase text-xs transition-colors"
+        >
+          Ver todos os combos <ArrowRight size={16} />
+        </button>
       </div>
 
-      <div className="cards-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {ofertas.map((produto) => (
-          <div key={produto.id} className="card-produto">
-            <div className="card-image-container">
+          <div
+            key={produto.id}
+            className="card-produto bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-gray-100 group hover:translate-y-[-5px] transition-all duration-300"
+            onClick={() => navigate(`/product/${produto.id}`)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="card-image-container relative aspect-video overflow-hidden">
               <img
-                src={`${backendUrl}/storage/${produto.image_path}`}
+                src={produto.image}
                 alt={produto.name}
                 onError={handleImageError}
-                className="produto-img"
+                className="produto-img w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
-              {produto.isOffer && <span className="badge-oferta">OFERTA!</span>}
+              <div className="absolute top-4 right-4 bg-red-600 text-white font-black px-4 py-1 rounded-full text-xs shadow-lg transform rotate-3">
+                OFERTA!
+              </div>
             </div>
 
-            <div className="card-content">
-              <h3 className="produto-titulo">{produto.name}</h3>
-              <p className="produto-descricao">{produto.description}</p>
+            <div className="card-content p-6">
+              <h3 className="produto-titulo text-2xl font-black text-gray-900 uppercase italic mb-2">
+                {produto.name}
+              </h3>
+              <p className="produto-descricao text-gray-500 text-sm font-medium mb-6 line-clamp-2">
+                {produto.description}
+              </p>
 
-              <div className="card-footer">
-                <div className="preco-container">
-                  {produto.originalPrice && (
-                    <span className="preco-antigo">
-                      R$ {produto.originalPrice.toFixed(2)}
-                    </span>
-                  )}
-                  <span className="preco-atual">
+              <div className="card-footer flex items-center justify-between">
+                <div className="preco-container flex flex-col">
+                  <span className="preco-antigo text-gray-400 line-through text-xs font-bold">
+                    R$ {produto.originalPrice?.toFixed(2)}
+                  </span>
+                  <span className="preco-atual text-2xl font-black text-orange-600 italic">
                     R$ {produto.price.toFixed(2)}
                   </span>
                 </div>
-                <button className="btn-adicionar">+ Adicionar</button>
+                <button className="btn-adicionar bg-gray-900 text-white p-4 rounded-2xl hover:bg-orange-600 transition-colors shadow-lg shadow-gray-200">
+                  <ShoppingCart size={20} />
+                </button>
               </div>
             </div>
           </div>

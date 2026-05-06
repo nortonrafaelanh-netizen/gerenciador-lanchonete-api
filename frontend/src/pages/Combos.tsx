@@ -2,25 +2,30 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProductCard } from "../app/components/ProductCard";
-import { useProducts } from "../app/context/ProductContext";
 import { useCart } from "../app/context/CartContext";
 import { Loader2, Zap, MapPin, Sparkles, Trophy } from "lucide-react";
+// Importação dos dados estáticos
+import { products, menuPorUnidade } from "../app/data/products";
 
 export function Combos() {
   const { unidade } = useCart();
-  const { products, loading: productsLoading } = useProducts();
   const navigate = useNavigate();
   const [combos, setCombos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Pega os IDs permitidos para a unidade
+    const produtosPermitidosIds = menuPorUnidade[unidade] ?? [];
+
+    // 2. Filtra pela categoria 'combo' e valida o ID na unidade
     let data = products.filter(
       (p) =>
         p.category === "combo" &&
         p.active !== false &&
-        String(p.franchiseName).toLowerCase() === unidade.toLowerCase(),
+        produtosPermitidosIds.includes(p.id),
     );
 
+    // 3. Fallback: Se a unidade não tiver combos específicos, mostra os combos gerais
     if (data.length === 0) {
       data = products.filter(
         (p) => p.category === "combo" && p.active !== false,
@@ -28,14 +33,10 @@ export function Combos() {
     }
 
     setCombos(data);
-  }, [products, unidade]);
 
-  useEffect(() => {
-    if (!productsLoading) {
-      const timer = setTimeout(() => setLoading(false), 250);
-      return () => clearTimeout(timer);
-    }
-  }, [productsLoading]);
+    const timer = setTimeout(() => setLoading(false), 250);
+    return () => clearTimeout(timer);
+  }, [unidade]);
 
   if (loading) {
     return (
@@ -66,7 +67,7 @@ export function Combos() {
       </div>
 
       <div className="container mx-auto px-4 mt-8">
-        {/* Header Estilizado - Estilo Figma Tenacious */}
+        {/* Header Estilizado */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-orange-600 font-bold uppercase text-xs tracking-[0.3em]">
@@ -90,18 +91,15 @@ export function Combos() {
           </div>
         </div>
 
-        {/* Listagem de Combos com Destaque */}
+        {/* Listagem de Combos */}
         <section>
           {combos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
               {combos.map((combo) => (
                 <div key={combo.id} className="relative group">
-                  {/* Badge flutuante de "Mais Vendido" ou "Super Combo" */}
                   <div className="absolute -top-4 left-6 z-10 bg-yellow-400 text-black font-black px-6 py-2 rounded-full text-xs shadow-xl flex items-center gap-2 group-hover:scale-110 transition-transform">
                     <Sparkles size={14} /> SUPER COMBO
                   </div>
-
-                  {/* Reutilizando o ProductCard para manter a lógica de carrinho idêntica */}
                   <ProductCard product={combo} />
                 </div>
               ))}
@@ -118,7 +116,7 @@ export function Combos() {
           )}
         </section>
 
-        {/* Footer de Chamada na própria página */}
+        {/* Footer de Chamada */}
         <div className="mt-20 bg-gray-900 rounded-[2.5rem] p-10 text-center text-white relative overflow-hidden">
           <div className="relative z-10">
             <h2 className="text-3xl font-black uppercase italic mb-4">

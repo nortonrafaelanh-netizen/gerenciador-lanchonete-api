@@ -5,40 +5,31 @@ import {
   Minus,
   ShoppingCart,
   ArrowLeft,
-  Clock,
-  Flame,
   Star,
   CheckCircle2,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useCart } from "../app/context/CartContext";
 import { useAuth } from "../app/context/AuthContext";
-import { useProducts } from "../app/context/ProductContext";
+// Importamos os produtos diretamente do arquivo de dados
+import { products } from "../app/data/products";
 
 export function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { user } = useAuth();
-  const { products, loading } = useProducts();
   const [quantity, setQuantity] = useState(1);
   const [imgError, setImgError] = useState(false);
 
   const fallbackImg =
     "https://st4.depositphotos.com/6437402/30960/i/1600/depositphotos_309600474-stock-photo-craft-beef-burger.jpg";
 
+  // Busca o produto diretamente no array estático
   const product = useMemo(() => {
     if (!id) return null;
-    return products.find((product) => String(product.id) === String(id));
-  }, [products, id]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <p className="text-gray-500 font-semibold">Carregando produto...</p>
-      </div>
-    );
-  }
+    return products.find((p) => String(p.id) === String(id));
+  }, [id]);
 
   if (!product) {
     return (
@@ -92,7 +83,10 @@ export function ProductDetails() {
         </div>
 
         <div className="flex flex-col justify-center">
-          <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-6 uppercase italic tracking-tighter">
+          <div className="flex items-center gap-2 text-orange-600 font-bold uppercase text-xs tracking-[0.3em] mb-2">
+            {product.category} Exclusive
+          </div>
+          <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-6 uppercase italic tracking-tighter leading-none">
             {product.name}
           </h1>
 
@@ -143,27 +137,9 @@ export function ProductDetails() {
               </p>
             </div>
 
-            <div className="flex items-center bg-gray-50 p-2 rounded-2xl border border-gray-100">
-              <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-12 h-12 flex items-center justify-center bg-white rounded-xl text-orange-600 shadow-sm"
-              >
-                <Minus size={20} />
-              </button>
-              <span className="font-black text-2xl px-6 text-gray-800">
-                {quantity}
-              </span>
-              <button
-                onClick={() => setQuantity((q) => q + 1)}
-                className="w-12 h-12 flex items-center justify-center bg-white rounded-xl text-orange-600 shadow-sm"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
-
             <button
               onClick={handleAddToCartAndNavigate}
-              className="w-full sm:w-auto bg-orange-600 text-white px-10 py-5 rounded-2xl font-black uppercase flex items-center justify-center gap-3 hover:bg-orange-700 transition-all shadow-xl italic"
+              className="w-full sm:w-auto bg-orange-600 text-white px-10 py-5 rounded-2xl font-black uppercase flex items-center justify-center gap-3 hover:bg-orange-700 transition-all shadow-xl italic active:scale-95"
             >
               <ShoppingCart size={24} strokeWidth={3} />{" "}
               {isCombo ? "Garantir Combo" : "Adicionar"}

@@ -1,25 +1,30 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
 import { ProductCard } from "../app/components/ProductCard";
-import { useProducts } from "../app/context/ProductContext";
 import { useCart } from "../app/context/CartContext";
 import { Loader2, Dog, MapPin, Tag, Sparkles } from "lucide-react";
+// Importamos os dados estáticos igual fizemos em Burgers
+import { products, menuPorUnidade } from "../app/data/products";
 
 export function Dogs() {
   const { unidade } = useCart();
-  const { products, loading: productsLoading } = useProducts();
   const [items, setItems] = useState([]);
   const [promocoes, setPromocoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Pega os IDs permitidos para a unidade selecionada
+    const produtosPermitidosIds = menuPorUnidade[unidade] ?? [];
+
+    // 2. Filtra os produtos pela categoria 'dog' e valida se o ID está na lista da unidade
     let data = products.filter(
       (p) =>
         p.category === "dog" &&
         p.active !== false &&
-        String(p.franchiseName).toLowerCase() === unidade.toLowerCase(),
+        produtosPermitidosIds.includes(p.id),
     );
 
+    // 3. Fallback: Se a unidade não tiver nenhum dog específico, mostra todos da categoria 'dog'
     if (data.length === 0) {
       data = products.filter((p) => p.category === "dog" && p.active !== false);
     }
@@ -28,21 +33,18 @@ export function Dogs() {
     setPromocoes(
       data.filter((p) => !!p.originalPrice && p.originalPrice > p.price),
     );
-  }, [products, unidade]);
 
-  useEffect(() => {
-    if (!productsLoading) {
-      const timer = setTimeout(() => setLoading(false), 250);
-      return () => clearTimeout(timer);
-    }
-  }, [productsLoading]);
+    // Timer de loading para suavizar a transição
+    const timer = setTimeout(() => setLoading(false), 250);
+    return () => clearTimeout(timer);
+  }, [unidade]);
 
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
         <Loader2 className="animate-spin text-orange-600" size={48} />
         <p className="text-gray-600 font-bold animate-pulse uppercase tracking-widest text-xs">
-          Preparando o balcão em {unidade}...
+          Sincronizando Cardápio de {unidade}...
         </p>
       </div>
     );
@@ -50,7 +52,7 @@ export function Dogs() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Banner de Promoções Dinâmico para Dogs */}
+      {/* Banner de Marquee */}
       {promocoes.length > 0 && (
         <div className="bg-orange-600 py-3 overflow-hidden border-b border-orange-700">
           <div className="flex whitespace-nowrap animate-marquee items-center gap-10">
@@ -59,8 +61,8 @@ export function Dogs() {
                 key={i}
                 className="text-white font-black text-xs uppercase italic flex items-center gap-2"
               >
-                <Sparkles size={14} /> Hot Dogs em Dobro? Confira as ofertas de{" "}
-                {unidade} — Qualidade Tenacious — Aproveite!
+                <Sparkles size={14} /> Ofertas Imperdíveis em {unidade} — Os
+                melhores Hot Dogs da região — Aproveite!
               </span>
             ))}
           </div>
@@ -68,7 +70,7 @@ export function Dogs() {
       )}
 
       <div className="container mx-auto px-4 mt-8">
-        {/* Header Estilizado Dogs */}
+        {/* Header da Página */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-orange-600 font-bold uppercase text-xs tracking-[0.3em]">
@@ -96,7 +98,7 @@ export function Dogs() {
           </div>
         </div>
 
-        {/* Seção de Promoções (Apenas se houver dogs em oferta) */}
+        {/* Seção de Promoções */}
         {promocoes.length > 0 && (
           <section className="mb-16">
             <div className="flex items-center gap-3 mb-8">
@@ -119,7 +121,7 @@ export function Dogs() {
           </section>
         )}
 
-        {/* Listagem Geral de Dogs */}
+        {/* Seção Geral */}
         <section>
           <div className="flex items-center gap-3 mb-8">
             <Dog className="text-gray-400" />

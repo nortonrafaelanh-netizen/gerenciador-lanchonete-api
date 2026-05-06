@@ -2,33 +2,37 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ProductCard } from "../app/components/ProductCard";
-import { useProducts } from "../app/context/ProductContext";
+import { useCart } from "../app/context/CartContext";
 import { Zap, Utensils, ArrowRight } from "lucide-react";
+// IMPORTANTE: Importando os dados estáticos sincronizados
+import { products } from "../app/data/products";
 
 export function Home() {
-  const { products, homeConfig, getDailyOffers } = useProducts();
-  const unidadeAtiva = "Rio do Sul";
+  const { unidade } = useCart(); // Pegando a unidade do contexto do carrinho
+  const unidadeAtiva = unidade || "Rio do Sul";
 
   const DEFAULT_BANNER =
     "https://images.unsplash.com/photo-1550547660-d9450f859349?w=1600";
 
-  // Banner vindo do admin (com fallback para o padrão)
-  const bannerUrl = homeConfig?.bannerUrl || DEFAULT_BANNER;
+  // Banner fixo ou fallback
+  const bannerUrl = DEFAULT_BANNER;
 
-  // Combos em destaque — agora controlados pelo admin via featuredIds
+  // Filtrando Combos em destaque direto dos dados estáticos
   const featuredCombos = useMemo(() => {
-    if (homeConfig?.featuredIds?.length > 0) {
-      const found = homeConfig.featuredIds
-        .map((id: string) => products.find((p) => String(p.id) === String(id)))
-        .filter(Boolean);
-      if (found.length > 0) return found;
-    }
-    // Fallback: primeiros 2 combos do cardápio
-    return products.filter((p) => p.category === "combo").slice(0, 2);
-  }, [products, homeConfig]);
+    return products
+      .filter((p) => p.category === "combo" && p.active !== false)
+      .slice(0, 2);
+  }, []);
 
-  // Ofertas do dia — usa getDailyOffers que respeita preços e validade do HomeManager
-  const dailyOffers = useMemo(() => getDailyOffers(), [products, homeConfig]);
+  // Filtrando Ofertas do dia direto dos dados estáticos (quem tem preço original maior)
+  const dailyOffers = useMemo(() => {
+    return products
+      .filter(
+        (p) =>
+          p.active !== false && p.originalPrice && p.originalPrice > p.price,
+      )
+      .slice(0, 4);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -121,19 +125,12 @@ export function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {dailyOffers.length > 0 ? (
               dailyOffers.map((offer) => (
-                <ProductCard
-                  key={offer.id}
-                  product={offer}
-                  originalPrice={offer.originalPrice}
-                />
+                <ProductCard key={offer.id} product={offer} />
               ))
             ) : (
               <div className="col-span-full py-12 text-center">
                 <p className="text-gray-400 font-medium mb-2">
                   Nenhuma oferta ativa para hoje.
-                </p>
-                <p className="text-gray-300 text-sm">
-                  Configure as ofertas no Painel do Franqueado → Aba Home
                 </p>
               </div>
             )}
@@ -192,7 +189,7 @@ function ComboCard({ combo, dark = false }) {
       </div>
       <div
         className="md:w-1/2 h-64 md:h-auto bg-cover bg-center"
-        style={{ backgroundImage: `url(${combo.image})` }}
+        style={{ backgroundImage: `url(${combo.image})` }} // Aqui ele usa a imagem corrigida do products.ts
       />
     </div>
   );

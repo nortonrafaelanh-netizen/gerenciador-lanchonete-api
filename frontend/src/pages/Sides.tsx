@@ -1,25 +1,30 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
 import { ProductCard } from "../app/components/ProductCard";
-import { useProducts } from "../app/context/ProductContext";
 import { useCart } from "../app/context/CartContext";
 import { Loader2, Utensils, MapPin, Tag, Sparkles, Cherry } from "lucide-react";
+// Importação dos dados estáticos sincronizados
+import { products, menuPorUnidade } from "../app/data/products";
 
 export function Acompanhamentos() {
   const { unidade } = useCart();
-  const { products, loading: productsLoading } = useProducts();
   const [items, setItems] = useState([]);
   const [promocoes, setPromocoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Pega os IDs permitidos para a unidade
+    const produtosPermitidosIds = menuPorUnidade[unidade] ?? [];
+
+    // 2. Filtra pela categoria 'side' e valida o ID na unidade
     let data = products.filter(
       (p) =>
         p.category === "side" &&
         p.active !== false &&
-        String(p.franchiseName).toLowerCase() === unidade.toLowerCase(),
+        produtosPermitidosIds.includes(p.id),
     );
 
+    // 3. Fallback: Se vazio, mostra todos os acompanhamentos
     if (data.length === 0) {
       data = products.filter(
         (p) => p.category === "side" && p.active !== false,
@@ -30,14 +35,10 @@ export function Acompanhamentos() {
     setPromocoes(
       data.filter((p) => !!p.originalPrice && p.originalPrice > p.price),
     );
-  }, [products, unidade]);
 
-  useEffect(() => {
-    if (!productsLoading) {
-      const timer = setTimeout(() => setLoading(false), 250);
-      return () => clearTimeout(timer);
-    }
-  }, [productsLoading]);
+    const timer = setTimeout(() => setLoading(false), 250);
+    return () => clearTimeout(timer);
+  }, [unidade]);
 
   if (loading) {
     return (
@@ -52,7 +53,7 @@ export function Acompanhamentos() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Banner de Promoções Dinâmico para Acompanhamentos */}
+      {/* Banner de Marquee */}
       {promocoes.length > 0 && (
         <div className="bg-orange-600 py-3 overflow-hidden border-b border-orange-700">
           <div className="flex whitespace-nowrap animate-marquee items-center gap-10">
